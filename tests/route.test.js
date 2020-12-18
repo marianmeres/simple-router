@@ -39,8 +39,8 @@ const suite = new TestRunner(path.basename(__filename));
 		suite.test(
 			`${route} -> ${match} => ${JSON.stringify(expected)}`,
 			() => {
-				let p = new SimpleRoute(route).parse(match);
-				assert(_.isEqual(p, expected), JSON.stringify(p));
+				let actual = new SimpleRoute(route).parse(match);
+				assert(_.isEqual(actual, expected), JSON.stringify(actual));
 			}
 		)
 	});

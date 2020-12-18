@@ -1,9 +1,9 @@
 # Simple router
 
-Minimalistic route parser for [sapper-like regex
-routes](https://sapper.svelte.dev/docs#Regexes_in_routes) itended for
-SPA hash change routing primarily, but could be used for any simple string based
-routing needs, for example, server sides websocket message routing...
+Minimalistic (zero dependencies, ~100 lines) route parser for [sapper-like regex
+routes](https://sapper.svelte.dev/docs#Regexes_in_routes). Intended primarily for
+client side SPA routing, but can be used for any simple string based
+dispatching needs (e.g. server side websocket message routing, etc...)
 
 ## Installation
 
@@ -13,10 +13,10 @@ npm install https://github.com/marianmeres/simple-router
 
 ## Quick start
 ```js
-// routes via ctor options
+// routes via ctor config object
 const router = new SimpleRouter({
     '/': () => pageIndex(),
-    '*': () => page404(),
+    '*': () => page404(), // special case catch-all (last resort fallback)
 });
 
 // route definition via "on" api
@@ -26,14 +26,23 @@ router.on(
 );
 
 // e.g.
-render(router.exec(location.hash));
+window.onhashchange = () => render(router.exec(location.hash));
 ```
 
 See [tests](tests) or [examples](examples) for more.
 
-## Route matching example
+## Route matching
 
-| Route definition          | Input              | Result                      |
+Route segments:
+- `exact` matches `exact`
+- `[name]` matches `any` and is resolved as `{ name: 'any' }` param
+- `[name(regex)]` matches if `regex.test(segment)` is truthy
+
+Few notes on segments separators (which is slash `/` by default):
+- multiple ones are always normalized to single,
+- separator is always trimmed (both left and right) before matching
+
+| Example route definition  | Example input      | Result                      |
 | ------------------------- | ------------------ | --------------------------- |
 | `/foo`                    | `/bar`             | `null`                      |
 | `/foo`                    | (empty string)     | `null`                      |
@@ -45,7 +54,6 @@ See [tests](tests) or [examples](examples) for more.
 | `foo`                     | `foo`              | `{}`                        |
 | `//foo///bar.baz/`        | `foo/bar.baz`      | `{}`                        |
 | `foo/bar/baz`             | `//foo//bar/baz//` | `{}`                        |
-| `#/foo/`                  | `#/foo`            | `{}`                        |
 | `/[foo]`                  | `/bar`             | `{"foo":"bar"}`             |
 | `#/foo/[bar]`             | `#/foo/bat`        | `{"bar":"bat"}`             |
 | `#/[foo]/[bar]`           | `#/baz/bat`        | `{"foo":"baz","bar":"bat"}` |
@@ -55,6 +63,6 @@ See [tests](tests) or [examples](examples) for more.
 | `/[id([0-9]+)]`           | `/foo`             | `null`                      |
 | `/foo/[bar]/[id([0-9]+)]` | `/foo/baz/123`     | `{"bar":"baz","id":"123"}`  |
 | `/foo/[id([0-9]+)]/[bar]` | `/foo/bar/baz`     | `null`                      |
-| `/foo/[([0-9]+)]`         | `/foo/123`         | `null`                      |
+| `/foo/[([0-9]+)]`         | `/foo/123`         | `null` (missing name before regex) |
 
 See [tests](tests) or [examples](examples) for more.

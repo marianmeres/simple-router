@@ -1,10 +1,12 @@
-// just manually "bundled"...
-
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SimpleRoute = void 0;
 class SimpleRoute {
     constructor(route) {
         this.route = route;
         this._parsed = SimpleRoute._parse(route);
     }
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
     static _escapeRegExp(string) {
         return string.replace(/[.*+\-?^${}()|[\]\\]/g, '\\$&');
     }
@@ -58,52 +60,5 @@ class SimpleRoute {
         return matched;
     }
 }
+exports.SimpleRoute = SimpleRoute;
 SimpleRoute.SPLITTER = '/';
-
-
-class SimpleRouter {
-    constructor(config) {
-        this._routes = [];
-        Object.entries(config || {}).forEach(([route, cb]) => {
-            this.on(route, cb);
-        });
-    }
-    _dbg(...a) {
-        SimpleRouter.debug && console.log('[SimpleRouter]', ...a);
-    }
-    on(routes, cb) {
-        if (!Array.isArray(routes))
-            routes = [routes];
-        routes.forEach((route) => {
-            if (route === '*') {
-                this._catchAll = cb;
-            }
-            else {
-                this._routes.push([new SimpleRoute(route), cb]);
-            }
-        });
-    }
-    exec(url, fallbackFn) {
-        this._dbg(`routing: '${url}' ...`);
-        const isFn = (v) => typeof v === 'function';
-        for (const [route, cb] of this._routes) {
-            // first match wins
-            // parse returns null or params object (which can be empty)
-            const params = route.parse(url);
-            if (params) {
-                this._dbg(`'${route.route}' match with`, params);
-                return isFn(cb) ? cb(params) : true;
-            }
-        }
-        if (isFn(fallbackFn)) {
-            this._dbg(`falling back...`);
-            return fallbackFn();
-        }
-        if (isFn(this._catchAll)) {
-            this._dbg(`catching all...`);
-            return this._catchAll();
-        }
-        return false;
-    }
-}
-SimpleRouter.debug = false;

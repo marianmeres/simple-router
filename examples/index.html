@@ -1,10 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+	<meta charset="UTF-8">
+	<title>Router example</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+	<script src="bundle.js" ></script>
+	<style>
+		body { padding: 2rem; }
+		h1 { font-size: 1.3rem; margin-bottom: 1rem; }
+		nav {
+			background: whitesmoke;
+			padding: 1rem;
+			font-size: .9rem;
+			margin-bottom: 1rem;
+		}
+		nav a {
+			display: inline-block;
+			margin-right: 1rem;
+		}
+	</style>
 </head>
 <body>
-$END$
+
+<h1>Simple router hello world example</h1>
+
+<nav>
+	<a href="#/">Home</a>
+	<a href="#" onclick="return gotoArticle()">Article</a>
+	<a href="#/foo">Wrong page</a>
+</nav>
+
+<section id="home" hidden>Home</section>
+<section id="article" hidden>Article <code></code></section>
+<section id="notfound" hidden>Page not found</section>
+
+<hr/>
+
+<small><a href="https://github.com/marianmeres/simple-router">Github</a></small>
+
+<script>
+	//
+	const gotoArticle = () => {
+		const id = prompt('Enter article (numeric) id', '123');
+		location.hash = `#/article/${id}/${Math.random().toString().substr(2)}`;
+		return false;
+	}
+
+	// quick-n-dirty
+	const render = (page, params) => {
+		const $pages = document.getElementsByTagName('section');
+		for (let $page of $pages) {
+			$page.hidden = $page.id !== page;
+			if (!$page.hidden) {
+				const $codes = $page.getElementsByTagName('code');
+				if ($codes.length) {
+					$codes[0].innerHTML = JSON.stringify(params);
+				}
+			}
+		}
+	}
+
+	//
+	const router = new SimpleRouter({
+		'*': () => render('notfound')
+	});
+
+	// homepage
+	router.on(['', '#/'], (params) => render('home', params));
+
+	// article page with "id" and "random" parameters
+	router.on(
+		'#/article/[id([0-9]+)]/[random]',
+		(params) => render('article', params)
+	);
+
+	// route now!
+	router.exec(location.hash);
+	window.onhashchange = () => router.exec(location.hash);
+</script>
+
 </body>
 </html>

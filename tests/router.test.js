@@ -78,7 +78,7 @@ suite.test('integration', () => {
 		'*': () => log.push('404'),
 	});
 
-	// or "manualy" via "on" api
+	// or via "on" api
 	router.on('/[bar]/[id([\\d]+)]/baz', ({ bar, id }) => log.push(`${bar}:${id}`));
 
 	router.exec('hey', () => log.push('ho')); // custom fallback

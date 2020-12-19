@@ -12,20 +12,42 @@ npm install https://github.com/marianmeres/simple-router
 ```
 
 ## Quick start
+
+There are two objects `SimpleRoute` and `SimpleRouter`. `SimpleRouter` keeps collection of
+`SimpleRoute`s and perform match on them in order in which they were registered. First match wins.
+
+`SimpleRoute` is hidden from the top level router api, but internally does this:
 ```js
-// routes via ctor config object
+const result = new SimpleRoute('/route/definition').parse(input);
+```
+where `result` is either `null` (no match) or params `object` (input matched). Params
+object will be empty `{}` if there are no named segments. Named segment is defined in
+brackets, e.g.: `/[foo]`.
+
+`SimpleRouter` does:
+- register routes with their "on match" callbacks: `router.on('/route/definition', callback)`
+- perform match `router.exec(input)`, which will **return** the matched route's executed callback.
+The callback can either do actual work (e.g. render page) or return an arbitrary value
+for later consumption (e.g. return component instance). Callback receives the matched
+route's parsed params object as a parameter.
+
+Example code:
+
+```js
+// routes definitions can be added via ctor config object
 const router = new SimpleRouter({
     '/': () => pageIndex(),
     '*': () => page404(), // special case catch-all (last resort fallback)
 });
 
-// route definition via "on" api
+// or via "on" api
 router.on(
     '/article/[id([0-9]+)]/[slug]',
-    ({ id, slug }) => pageArticle(id)
+    ({ id, slug }) => pageArticle(id, slug)
 );
 
-// e.g.
+// finally, perform route match (execute router)
+// (example here returns "component" which is then "rendered")
 window.onhashchange = () => render(router.exec(location.hash));
 ```
 

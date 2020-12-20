@@ -30,7 +30,7 @@ export class SimpleRouter {
 	}
 
 	exec(url: string, fallbackFn?: Function) {
-		const dbgPrefix = `${url} -> `;
+		const dbgPrefix = `'${url}' -> `;
 
 		const isFn = (v) => typeof v === 'function';
 		for (const [route, cb] of this._routes) {
@@ -38,7 +38,7 @@ export class SimpleRouter {
 			// parse returns null or params object (which can be empty)
 			const params = route.parse(url);
 			if (params) {
-				this._dbg(`${dbgPrefix}matches ${route.route} with`, params);
+				this._dbg(`${dbgPrefix}matches '${route.route}' with`, params);
 				return isFn(cb) ? cb(params) : true;
 			}
 		}

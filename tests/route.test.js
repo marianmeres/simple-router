@@ -20,7 +20,7 @@ const rpad = (s, len = 25) => (s += (' '.repeat(Math.max(0, len - s.length))));
 	['/',                        '',                  {}],
 	['',                         '///',               {}],
 	['foo',                      'foo',               {}],
-	['//foo///bar.baz/',         'foo/bar.baz ',      {}],
+	['//foo///bar.baz/',         'foo/bar.baz',       {}],
 	['foo/bar/baz',              '//foo//bar/baz//',  {}],
 	['#/foo//',                  '#/foo',             {}],
 	// match with params
@@ -37,11 +37,11 @@ const rpad = (s, len = 25) => (s += (' '.repeat(Math.max(0, len - s.length))));
 	// wrong regex - missing name...
 	['/foo/[([0-9]+)]',          '/foo/123',          null],
 ]
-	.forEach(([route, match, expected]) => {
+	.forEach(([route, input, expected]) => {
 		suite.test(
-			`${rpad(route, 23)} -> ${rpad(match, 16)} => ${JSON.stringify(expected)}`,
+			`${rpad(route, 23)} -> ${rpad(input, 16)} => ${JSON.stringify(expected)}`,
 			() => {
-				const actual = new SimpleRoute(route).parse(match);
+				const actual = new SimpleRoute(route).parse(input);
 				assert(_.isEqual(actual, expected), JSON.stringify(actual));
 			}
 		)

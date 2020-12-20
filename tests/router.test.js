@@ -49,7 +49,7 @@ suite.test('catch all fallback', () => {
 		'*': () => log.push('404'),
 	});
 
-	// truthy even on no match (because catch all exists)
+	// truthy even on no match (because catch all returns truthy)
 	assert(router.exec('/foo'));
 	router.exec('/');
 

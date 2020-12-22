@@ -14,7 +14,7 @@ npm install https://github.com/marianmeres/simple-router
 ## Quick start
 
 There are two objects `SimpleRoute` and `SimpleRouter`. `SimpleRouter` keeps collection of
-`SimpleRoute`s and perform match on them in order in which they were registered. First match wins.
+`SimpleRoute`s and performs match on them in order in which they were registered. First match wins.
 
 `SimpleRoute` is hidden from the top level router api, but internally does this:
 ```js

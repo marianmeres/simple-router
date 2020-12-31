@@ -7,6 +7,7 @@ export declare class SimpleRouter {
         [route: string]: Function;
     });
     protected _dbg(...a: any[]): void;
+    reset(): this;
     on(routes: string | string[], cb: Function): void;
     exec(url: string, fallbackFn?: Function): any;
 }

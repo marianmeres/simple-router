@@ -12,6 +12,10 @@ class SimpleRouter {
     _dbg(...a) {
         SimpleRouter.debug && console.log('[SimpleRouter]', ...a);
     }
+    reset() {
+        this._routes = [];
+        return this;
+    }
     on(routes, cb) {
         if (!Array.isArray(routes))
             routes = [routes];

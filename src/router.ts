@@ -18,6 +18,11 @@ export class SimpleRouter {
 		SimpleRouter.debug && console.log('[SimpleRouter]', ...a);
 	}
 
+	reset() {
+		this._routes = [];
+		return this;
+	}
+
 	on(routes: string | string[], cb: Function) {
 		if (!Array.isArray(routes)) routes = [routes];
 		routes.forEach((route) => {

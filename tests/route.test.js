@@ -36,9 +36,12 @@ const rpad = (s, len = 25) => (s += (' '.repeat(Math.max(0, len - s.length))));
 	['/foo/[id([0-9]+)]/[bar]',  '/foo/bar/baz',      null],
 	// wrong regex - missing name...
 	['/foo/[([0-9]+)]',          '/foo/123',          null],
+	//
+	['/[foo(bar)]/[baz]',         '/bar/bat',         { foo: 'bar', baz: 'bat' }],
+	['/[foo(bar)]/[baz]',         '/baz/bat',         null],
 ]
-	.forEach(([route, input, expected]) => {
-		suite.test(
+	.forEach(([route, input, expected, only]) => {
+		suite[only ? 'only' : 'test'](
 			`${rpad(route, 23)} -> ${rpad(input, 16)} => ${JSON.stringify(expected)}`,
 			() => {
 				const actual = new SimpleRoute(route).parse(input);

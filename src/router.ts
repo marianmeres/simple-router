@@ -4,7 +4,7 @@ export class SimpleRouter {
 	// console log debug on/off switch
 	static debug = false;
 
-	protected _routes: [SimpleRoute, Function][] = [];
+	protected _routes: [SimpleRoute, Function, boolean][] = [];
 
 	protected _catchAll: Function;
 
@@ -23,13 +23,13 @@ export class SimpleRouter {
 		return this;
 	}
 
-	on(routes: string | string[], cb: Function) {
+	on(routes: string | string[], cb: Function, allowQueryParams = true) {
 		if (!Array.isArray(routes)) routes = [routes];
 		routes.forEach((route) => {
 			if (route === '*') {
 				this._catchAll = cb;
 			} else {
-				this._routes.push([new SimpleRoute(route), cb]);
+				this._routes.push([new SimpleRoute(route), cb, allowQueryParams]);
 			}
 		});
 	}
@@ -38,10 +38,10 @@ export class SimpleRouter {
 		const dbgPrefix = `'${url}' -> `;
 
 		const isFn = (v) => typeof v === 'function';
-		for (const [route, cb] of this._routes) {
+		for (const [route, cb, allowQueryParams] of this._routes) {
 			// first match wins
 			// parse returns null or params object (which can be empty)
-			const params = route.parse(url);
+			const params = route.parse(url, allowQueryParams);
 			if (params) {
 				this._dbg(`${dbgPrefix}matches '${route.route}' with`, params);
 				return isFn(cb) ? cb(params) : true;

@@ -50,6 +50,28 @@ const rpad = (s, len = 25) => (s += (' '.repeat(Math.max(0, len - s.length))));
 		)
 	});
 
+suite.test('query params parsing works and is enabled by default', () => {
+	let actual = new SimpleRoute('/foo/[bar]').parse('/foo/bar?baz=ba%20t');
+	assert(_.isEqual(actual, {bar: 'bar', baz: 'ba t'}), JSON.stringify(actual));
+
+	// no match must still be no match
+	actual = new SimpleRoute('/foo/[bar]').parse('/hoho?bar=bat');
+	assert(_.isEqual(actual, null), JSON.stringify(actual));
+});
+
+suite.test('path params have priority over query params', () => {
+	const actual = new SimpleRoute('/foo/[bar]').parse('/foo/bar?bar=bat');
+	assert(_.isEqual(actual, {bar: 'bar'}), JSON.stringify(actual));
+});
+
+suite.test('query params parsing can be disabled', () => {
+	let actual = new SimpleRoute('/foo/[bar]').parse('/foo/bar?baz=bat', false);
+	assert(_.isEqual(actual, {bar: 'bar?baz=bat'}), JSON.stringify(actual));
+	// note added slash
+	actual = new SimpleRoute('/foo/[bar]').parse('/foo/bar/?baz=bat', false);
+	assert(_.isEqual(actual, null), JSON.stringify(actual));
+});
+
 //
 if (require.main === module) {
 	suite.run();

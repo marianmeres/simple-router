@@ -7,8 +7,8 @@ class SimpleRoute {
         this._parsed = SimpleRoute._parse(route);
     }
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
-    static _escapeRegExp(string) {
-        return string.replace(/[.*+\-?^${}()|[\]\\]/g, '\\$&');
+    static _escapeRegExp(str) {
+        return str.replace(/[.*+\-?^${}()|[\]\\]/g, '\\$&');
     }
     static _sanitizeAndSplit(str) {
         const s = SimpleRoute._escapeRegExp(SimpleRoute.SPLITTER);
@@ -41,13 +41,31 @@ class SimpleRoute {
             return memo;
         }, []);
     }
-    parse(url) {
+    static parseQueryString(str) {
+        return `${str}`
+            .replace(/^&/, '')
+            .replace(/&$/, '')
+            .split('&')
+            .reduce((memo, kvpair) => {
+            const [k, v] = kvpair.split('=').map(decodeURIComponent);
+            if (k.length)
+                memo[k] = v;
+            return memo;
+        }, {});
+    }
+    parse(url, allowQueryParams = true) {
+        let matched = {};
+        const qPos = url.indexOf('?');
+        if (allowQueryParams && ~qPos) {
+            const _backup = url;
+            url = _backup.slice(0, qPos);
+            matched = SimpleRoute.parseQueryString(_backup.slice(qPos + 1));
+        }
         let segments = SimpleRoute._sanitizeAndSplit(url);
         // quick cheap check: if counts dont match = no match
         if (segments.length !== this._parsed.length) {
             return null;
         }
-        let matched = {};
         for (const [i, s] of segments.entries()) {
             const p = this._parsed[i];
             if (!p.test.test(s)) {

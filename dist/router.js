@@ -16,7 +16,7 @@ class SimpleRouter {
         this._routes = [];
         return this;
     }
-    on(routes, cb) {
+    on(routes, cb, allowQueryParams = true) {
         if (!Array.isArray(routes))
             routes = [routes];
         routes.forEach((route) => {
@@ -24,17 +24,17 @@ class SimpleRouter {
                 this._catchAll = cb;
             }
             else {
-                this._routes.push([new route_1.SimpleRoute(route), cb]);
+                this._routes.push([new route_1.SimpleRoute(route), cb, allowQueryParams]);
             }
         });
     }
     exec(url, fallbackFn) {
         const dbgPrefix = `'${url}' -> `;
         const isFn = (v) => typeof v === 'function';
-        for (const [route, cb] of this._routes) {
+        for (const [route, cb, allowQueryParams] of this._routes) {
             // first match wins
             // parse returns null or params object (which can be empty)
-            const params = route.parse(url);
+            const params = route.parse(url, allowQueryParams);
             if (params) {
                 this._dbg(`${dbgPrefix}matches '${route.route}' with`, params);
                 return isFn(cb) ? cb(params) : true;

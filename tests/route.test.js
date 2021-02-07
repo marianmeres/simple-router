@@ -39,6 +39,8 @@ const rpad = (s, len = 25) => (s += (' '.repeat(Math.max(0, len - s.length))));
 	//
 	['/[foo(bar)]/[baz]',         '/bar/bat',         { foo: 'bar', baz: 'bat' }],
 	['/[foo(bar)]/[baz]',         '/baz/bat',         null],
+	// url encoded segments and values
+	['/foo/[id%20x]',             '/foo/12%203',      { 'id x': '12 3' }],
 ]
 	.forEach(([route, input, expected, only]) => {
 		suite[only ? 'only' : 'test'](

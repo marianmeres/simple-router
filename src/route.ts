@@ -89,7 +89,7 @@ export class SimpleRoute {
 				return null;
 			}
 			if (p.name) {
-				matched[p.name] = s;
+				matched[decodeURIComponent(p.name)] = decodeURIComponent(s);
 			}
 		}
 

@@ -1,6 +1,6 @@
 {
   "name": "simple-router",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Minimalistic route parser for sapper-like regex routes",
   "main": "dist/index.js",
   "scripts": {

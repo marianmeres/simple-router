@@ -7,6 +7,8 @@ class SimpleRouter {
         this._routes = [];
         // current (last matched) route
         this._current = null;
+        // https://svelte.dev/docs#Store_contract
+        this._subscriptions = new Set();
         Object.entries(config || {}).forEach(([route, cb]) => {
             this.on(route, cb);
         });
@@ -35,29 +37,47 @@ class SimpleRouter {
     }
     exec(url, fallbackFn) {
         const dbgPrefix = `'${url}' -> `;
-        this._current = null;
         const isFn = (v) => typeof v === 'function';
         for (const [route, cb, allowQueryParams] of this._routes) {
             // first match wins
             // parse returns null or params object (which can be empty)
             const params = route.parse(url, allowQueryParams);
             if (params) {
-                this._current = route.route;
+                this._publishCurrent(route.route);
                 this._dbg(`${dbgPrefix}matches '${route.route}' with`, params);
                 return isFn(cb) ? cb(params) : true;
             }
         }
         if (isFn(fallbackFn)) {
+            this._publishCurrent(null);
             this._dbg(`${dbgPrefix}fallback...`);
             return fallbackFn();
         }
         if (isFn(this._catchAll)) {
-            this._current = '*';
+            this._publishCurrent('*');
             this._dbg(`${dbgPrefix}catchall...`);
             return this._catchAll();
         }
+        this._publishCurrent(null);
         this._dbg(`${dbgPrefix}no match...`);
         return false;
+    }
+    _publishCurrent(value) {
+        this._current = value;
+        this._subscriptions.forEach((cb) => cb(value));
+    }
+    // https://svelte.dev/docs#Store_contract
+    subscribe(subscription) {
+        if (typeof subscription !== 'function') {
+            throw new TypeError('Subscription is not a function');
+        }
+        this._subscriptions.add(subscription);
+        subscription(this._current);
+        // For interoperability with RxJS Observables, the .subscribe method is also
+        // allowed to return an object with an .unsubscribe method
+        return {
+            unsubscribe: () => this._subscriptions.delete(subscription),
+        };
     }
 }
 exports.SimpleRouter = SimpleRouter;

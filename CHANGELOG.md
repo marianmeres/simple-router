@@ -3,6 +3,10 @@
 ## [Unreleased]
 	- optional path segments
 
+## [1.4.0] - 2021-02-22
+### Added
+	- router's current route as observable (via .subscribe)
+
 ## [1.3.0] - 2021-02-22
 ### Added
 	- `router.current` -> most recently matched route via `router.exec()`

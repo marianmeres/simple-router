@@ -80,12 +80,15 @@ suite.test('exec returns arbitrary value', () => {
 
 suite.test('integration', () => {
 	const log = [];
+	const log2 = [];
 
 	// routes can be cofigured via ctor config
 	const router = new SimpleRouter({
 		'/': () => log.push('index'),
 		'*': () => log.push('404'),
 	});
+
+	router.subscribe((v) => log2.push(v));
 
 	// or via "on" api
 	const route = '/[bar]/[id([\\d]+)]/baz';
@@ -101,6 +104,7 @@ suite.test('integration', () => {
 	assert(router.current === '/');
 
 	assert(log.join() === 'ho,404,id:123,index');
+	assert(log2.join() === [null, null, '*', route, '/'].join());
 });
 
 //

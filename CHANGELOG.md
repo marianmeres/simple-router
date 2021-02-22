@@ -3,6 +3,10 @@
 ## [Unreleased]
 	- optional path segments
 
+## [1.3.0] - 2021-02-22
+### Added
+	- `router.current` -> most recently matched route via `router.exec()`
+
 ## [1.2.0] - 2021-02-07
 ### Added
 	- url decode by default on segments as well (not just on query vars)

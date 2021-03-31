@@ -1,6 +1,6 @@
 # Simple router
 
-Minimalistic (zero dependencies, ~100 lines) route parser for [sapper-like regex
+Minimalistic (zero dependencies, ~200 lines) route parser for [sapper-like regex
 routes](https://sapper.svelte.dev/docs#Regexes_in_routes). Intended primarily for
 client side SPA routing, but can be used for any simple string based
 dispatching needs (e.g. server side websocket message routing, etc...)
@@ -59,6 +59,7 @@ Route segments:
 - `exact` matches `exact`
 - `[name]` matches `any` and is resolved as `{ name: 'any' }` param
 - `[name(regex)]` matches if `regex.test(segment)` is truthy
+- `exact?` or `[name]?` marks segment as optional
 
 Few notes on segments separators (which is slash `/` by default):
 - multiple ones are always normalized to single,
@@ -86,5 +87,11 @@ Few notes on segments separators (which is slash `/` by default):
 | `/foo/[bar]/[id([0-9]+)]` | `/foo/baz/123`     | `{"bar":"baz","id":"123"}`  |
 | `/foo/[id([0-9]+)]/[bar]` | `/foo/bar/baz`     | `null`                      |
 | `/foo/[([0-9]+)]`         | `/foo/123`         | `null` (missing name before regex) |
+| `/foo/[bar]?`             | `/foo`             | `{}`                        |
+| `/foo/[bar]?`             | `/foo/bar`         | `{ bar: 'bar' }`            |
+| `/foo/[bar]?/baz`         | `/foo/bar/baz`     | `{ bar: 'bar' }`            |
 
 See [tests](tests) or [examples](examples) for more.
+
+## Todo (maybe)
+- `[...name]` _rest_ segment support

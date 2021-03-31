@@ -94,6 +94,6 @@ export class SimpleRouter {
 		// allowed to return an object with an .unsubscribe method
 		return {
 			unsubscribe: () => this._subscriptions.delete(subscription),
-		}
+		};
 	}
 }

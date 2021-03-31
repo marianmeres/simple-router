@@ -6,7 +6,7 @@ const { SimpleRoute } = require('../dist');
 
 const suite = new TestRunner(path.basename(__filename));
 
-const rpad = (s, len = 25) => (s += (' '.repeat(Math.max(0, len - s.length))));
+const rpad = (s, len = 25) => (s += ' '.repeat(Math.max(0, len - s.length)));
 
 // prettier-ignore
 [
@@ -16,7 +16,7 @@ const rpad = (s, len = 25) => (s += (' '.repeat(Math.max(0, len - s.length))));
 	['/foo/[bar]',               '/foo',              null],
 	['/[foo]/bar',               '/foo',              null],
 	['/[foo]/[bar]',             '/foo',              null],
-	// match no params
+	// match no params (trailing separators are OK)
 	['/',                        '',                  {}],
 	['',                         '///',               {}],
 	['foo',                      'foo',               {}],
@@ -41,6 +41,25 @@ const rpad = (s, len = 25) => (s += (' '.repeat(Math.max(0, len - s.length))));
 	['/[foo(bar)]/[baz]',         '/baz/bat',         null],
 	// url encoded segments and values
 	['/foo/[id%20x]',             '/foo/12%203',      { 'id x': '12 3' }],
+	// optional param
+	['/foo?',                     '/',                {}],
+	['/foo?',                     '/foo',             {}],
+	['/foo?',                     '/bar',             null],
+	['/foo/[bar]?',               '/foo',             {}],
+	['/foo/[bar]?',               '/foo/bar',         { bar: 'bar' }],
+	['/foo/[bar]?',               '/foo/bar/baz',     null],
+	['/foo/[bar([0-9]+)]?',       '/foo',             {}],
+	['/foo/[bar([0-9]+)]?',       '/foo/bar',         null],
+	['/foo/[bar([0-9]+)]?',       '/foo/123',         { bar: '123' }],
+	['/foo/[bar([0-9]+)]?',       '/foo/123/baz',     null],
+	//
+	['/foo/[bar]?/baz',           '/foo',             null],
+	['/foo/[bar]?/baz',           '/foo/bar',         null], // !!! must not match
+	['/foo/[bar]?/baz',           '/foo/baz',         null], // !!! must not match
+	['/foo/[bar]?/baz',           '/foo/bar/baz',     { bar: 'bar' }],
+	['/foo/[bar]?/[baz]?',        '/foo',             {}],
+	['/foo/[bar]?/[baz]?',        '/foo/bar',         { bar: 'bar' }],
+	['/foo/[bar]?/[baz]?',        '/foo/bar/baz',     { bar: 'bar', baz: 'baz' }],
 ]
 	.forEach(([route, input, expected, only]) => {
 		suite[only ? 'only' : 'test'](
@@ -54,7 +73,7 @@ const rpad = (s, len = 25) => (s += (' '.repeat(Math.max(0, len - s.length))));
 
 suite.test('query params parsing works and is enabled by default', () => {
 	let actual = new SimpleRoute('/foo/[bar]').parse('/foo/bar?baz=ba%20t');
-	assert(_.isEqual(actual, {bar: 'bar', baz: 'ba t'}), JSON.stringify(actual));
+	assert(_.isEqual(actual, { bar: 'bar', baz: 'ba t' }), JSON.stringify(actual));
 
 	// no match must still be no match
 	actual = new SimpleRoute('/foo/[bar]').parse('/hoho?bar=bat');
@@ -63,12 +82,12 @@ suite.test('query params parsing works and is enabled by default', () => {
 
 suite.test('path params have priority over query params', () => {
 	const actual = new SimpleRoute('/foo/[bar]').parse('/foo/bar?bar=bat');
-	assert(_.isEqual(actual, {bar: 'bar'}), JSON.stringify(actual));
+	assert(_.isEqual(actual, { bar: 'bar' }), JSON.stringify(actual));
 });
 
 suite.test('query params parsing can be disabled', () => {
 	let actual = new SimpleRoute('/foo/[bar]').parse('/foo/bar?baz=bat', false);
-	assert(_.isEqual(actual, {bar: 'bar?baz=bat'}), JSON.stringify(actual));
+	assert(_.isEqual(actual, { bar: 'bar?baz=bat' }), JSON.stringify(actual));
 	// note added slash
 	actual = new SimpleRoute('/foo/[bar]').parse('/foo/bar/?baz=bat', false);
 	assert(_.isEqual(actual, null), JSON.stringify(actual));

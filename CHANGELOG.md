@@ -3,6 +3,10 @@
 ## [Unreleased]
 	- optional path segments
 
+## [1.5.0] - 2021-03-31
+### Added
+	- added support for optional segments marked as `foo?` or if named as `[foo]?`
+
 ## [1.4.0] - 2021-02-22
 ### Added
 	- router's current route as observable (via .subscribe)

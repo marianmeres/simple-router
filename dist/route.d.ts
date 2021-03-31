@@ -2,6 +2,7 @@ export interface RouteConfig {
     segment: string;
     name: string;
     test: RegExp;
+    isOptional: boolean;
 }
 export declare class SimpleRoute {
     readonly route: any;

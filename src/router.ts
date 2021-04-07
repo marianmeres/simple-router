@@ -8,8 +8,8 @@ export class SimpleRouter {
 
 	protected _catchAll: Function;
 
-	// current (last matched) route
-	protected _current = null;
+	// current (last matched) route and params (in the shape { route: "...", params: {} } )
+	protected _current: { route: string, params: any } = { route: null, params: null };
 
 	// https://svelte.dev/docs#Store_contract
 	protected _subscriptions = new Set<Function>();
@@ -53,32 +53,32 @@ export class SimpleRouter {
 			// parse returns null or params object (which can be empty)
 			const params = route.parse(url, allowQueryParams);
 			if (params) {
-				this._publishCurrent(route.route);
+				this._publishCurrent(route.route, params);
 				this._dbg(`${dbgPrefix}matches '${route.route}' with`, params);
 				return isFn(cb) ? cb(params) : true;
 			}
 		}
 
 		if (isFn(fallbackFn)) {
-			this._publishCurrent(null);
+			this._publishCurrent(null, null);
 			this._dbg(`${dbgPrefix}fallback...`);
 			return fallbackFn();
 		}
 
 		if (isFn(this._catchAll)) {
-			this._publishCurrent('*');
+			this._publishCurrent('*', null);
 			this._dbg(`${dbgPrefix}catchall...`);
 			return this._catchAll();
 		}
 
-		this._publishCurrent(null);
+		this._publishCurrent(null, null);
 		this._dbg(`${dbgPrefix}no match...`);
 		return false;
 	}
 
-	protected _publishCurrent(value) {
-		this._current = value;
-		this._subscriptions.forEach((cb) => cb(value));
+	protected _publishCurrent(route, params) {
+		this._current = { route, params };
+		this._subscriptions.forEach((cb) => cb(this._current));
 	}
 
 	// https://svelte.dev/docs#Store_contract

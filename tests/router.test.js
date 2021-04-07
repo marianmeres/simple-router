@@ -11,17 +11,23 @@ suite.test('sanity check', () => {
 		'/': () => log.push('index'),
 	});
 
-	assert(router.current === null);
+	//
+	assert(router.current.route === null);
+	assert(router.current.params === null);
 
 	// match returns truthy (depends on the callback)
 	assert(router.exec('/'));
 
-	assert(router.current === '/');
+	//
+	assert(router.current.route === '/');
+	assert(router.current.params);
 
 	// returns falsey on no match (but only if no fallback or catch all provided)
 	assert(!router.exec('/wrong/path'));
 
-	assert(router.current === null);
+	//
+	assert(router.current.route === null);
+	assert(router.current.params === null);
 
 	assert(log.join() === 'index');
 });
@@ -58,7 +64,7 @@ suite.test('catch all fallback', () => {
 	// truthy even on no match (because catch all returns truthy)
 	assert(router.exec('/foo'));
 
-	assert(router.current === '*');
+	assert(router.current.route === '*');
 
 	router.exec('/');
 
@@ -88,20 +94,26 @@ suite.test('integration', () => {
 		'*': () => log.push('404'),
 	});
 
-	router.subscribe((v) => log2.push(v));
+	router.subscribe((v) => log2.push(v.route));
 
 	// or via "on" api
 	const route = '/[bar]/[id([\\d]+)]/baz';
 	router.on(route, ({ bar, id }) => log.push(`${bar}:${id}`));
 
 	router.exec('hey', () => log.push('ho')); // custom fallback
-	assert(router.current === null);
+	assert(router.current.route === null);
+
 	router.exec('id/non-digits/baz'); // 404
-	assert(router.current === '*');
+	assert(router.current.route === '*');
+	assert(router.current.params === null);
+
 	router.exec('id/123/baz'); // id:123
-	assert(router.current === route);
+	assert(router.current.route === route);
+	assert(router.current.params.bar === 'id');
+	assert(router.current.params.id === '123');
+
 	router.exec(''); // index
-	assert(router.current === '/');
+	assert(router.current.route === '/');
 
 	assert(log.join() === 'ho,404,id:123,index');
 	assert(log2.join() === [null, null, '*', route, '/'].join());

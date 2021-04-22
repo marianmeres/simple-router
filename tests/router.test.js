@@ -119,6 +119,19 @@ suite.test('integration', () => {
 	assert(log2.join() === [null, null, '*', route, '/'].join());
 });
 
+suite.test('label test', () => {
+	const router = new SimpleRouter();
+
+	router.on('/foo', () => null, { label: 'foo' });
+	router.on('/bar', () => null, { label: 'bar' });
+
+	router.exec('/foo');
+	assert(router.current.label === 'foo');
+
+	router.exec('/bar');
+	assert(router.current.label === 'bar');
+});
+
 //
 if (require.main === module) {
 	suite.run();

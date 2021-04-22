@@ -4,12 +4,12 @@ export class SimpleRouter {
 	// console log debug on/off switch
 	static debug = false;
 
-	protected _routes: [SimpleRoute, Function, boolean][] = [];
+	protected _routes: [SimpleRoute, Function, boolean, string][] = [];
 
 	protected _catchAll: Function;
 
 	// current (last matched) route and params (in the shape { route: "...", params: {} } )
-	protected _current: { route: string, params: any } = { route: null, params: null };
+	protected _current: { route: string, params: any, label: string } = { route: null, params: null, label: null };
 
 	// https://svelte.dev/docs#Store_contract
 	protected _subscriptions = new Set<Function>();
@@ -33,13 +33,13 @@ export class SimpleRouter {
 		return this._current;
 	}
 
-	on(routes: string | string[], cb: Function, allowQueryParams = true) {
+	on(routes: string | string[], cb: Function, { label = null, allowQueryParams = true } = {}) {
 		if (!Array.isArray(routes)) routes = [routes];
 		routes.forEach((route) => {
 			if (route === '*') {
 				this._catchAll = cb;
 			} else {
-				this._routes.push([new SimpleRoute(route), cb, allowQueryParams]);
+				this._routes.push([new SimpleRoute(route), cb, allowQueryParams, label]);
 			}
 		});
 	}
@@ -48,36 +48,36 @@ export class SimpleRouter {
 		const dbgPrefix = `'${url}' -> `;
 
 		const isFn = (v) => typeof v === 'function';
-		for (const [route, cb, allowQueryParams] of this._routes) {
+		for (const [route, cb, allowQueryParams, label] of this._routes) {
 			// first match wins
 			// parse returns null or params object (which can be empty)
 			const params = route.parse(url, allowQueryParams);
 			if (params) {
-				this._publishCurrent(route.route, params);
+				this._publishCurrent(route.route, params, label);
 				this._dbg(`${dbgPrefix}matches '${route.route}' with`, params);
 				return isFn(cb) ? cb(params) : true;
 			}
 		}
 
 		if (isFn(fallbackFn)) {
-			this._publishCurrent(null, null);
+			this._publishCurrent(null, null, null);
 			this._dbg(`${dbgPrefix}fallback...`);
 			return fallbackFn();
 		}
 
 		if (isFn(this._catchAll)) {
-			this._publishCurrent('*', null);
+			this._publishCurrent('*', null, null);
 			this._dbg(`${dbgPrefix}catchall...`);
 			return this._catchAll();
 		}
 
-		this._publishCurrent(null, null);
+		this._publishCurrent(null, null, null);
 		this._dbg(`${dbgPrefix}no match...`);
 		return false;
 	}
 
-	protected _publishCurrent(route, params) {
-		this._current = { route, params };
+	protected _publishCurrent(route, params, label) {
+		this._current = { route, params, label };
 		this._subscriptions.forEach((cb) => cb(this._current));
 	}
 

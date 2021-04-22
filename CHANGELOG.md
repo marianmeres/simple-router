@@ -3,6 +3,11 @@
 ## [Unreleased]
 	- optional path segments
 
+
+## [1.7.0] - 2021-04-22
+### Added
+	- route (optional) label support added
+
 ## [1.6.0] - 2021-04-07
 ### Added
 	- router's current contains both route and params { route: string; params: any }

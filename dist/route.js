@@ -2,6 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SimpleRoute = void 0;
 class SimpleRoute {
+    route;
+    static SPLITTER = '/';
+    _parsed;
     constructor(route) {
         this.route = route;
         this._parsed = SimpleRoute._parse(route);
@@ -92,4 +95,3 @@ class SimpleRoute {
     }
 }
 exports.SimpleRoute = SimpleRoute;
-SimpleRoute.SPLITTER = '/';

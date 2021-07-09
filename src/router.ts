@@ -9,7 +9,11 @@ export class SimpleRouter {
 	protected _catchAll: Function;
 
 	// current (last matched) route and params (in the shape { route: "...", params: {} } )
-	protected _current: { route: string, params: any, label: string } = { route: null, params: null, label: null };
+	protected _current: { route: string; params: any; label: string } = {
+		route: null,
+		params: null,
+		label: null,
+	};
 
 	// https://svelte.dev/docs#Store_contract
 	protected _subscriptions = new Set<Function>();
@@ -33,7 +37,11 @@ export class SimpleRouter {
 		return this._current;
 	}
 
-	on(routes: string | string[], cb: Function, { label = null, allowQueryParams = true } = {}) {
+	on(
+		routes: string | string[],
+		cb: Function,
+		{ label = null, allowQueryParams = true } = {}
+	) {
 		if (!Array.isArray(routes)) routes = [routes];
 		routes.forEach((route) => {
 			if (route === '*') {

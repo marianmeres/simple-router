@@ -3,12 +3,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SimpleRouter = void 0;
 const route_1 = require("./route");
 class SimpleRouter {
+    // console log debug on/off switch
+    static debug = false;
+    _routes = [];
+    _catchAll;
+    // current (last matched) route and params (in the shape { route: "...", params: {} } )
+    _current = {
+        route: null,
+        params: null,
+        label: null,
+    };
+    // https://svelte.dev/docs#Store_contract
+    _subscriptions = new Set();
     constructor(config) {
-        this._routes = [];
-        // current (last matched) route and params (in the shape { route: "...", params: {} } )
-        this._current = { route: null, params: null, label: null };
-        // https://svelte.dev/docs#Store_contract
-        this._subscriptions = new Set();
         Object.entries(config || {}).forEach(([route, cb]) => {
             this.on(route, cb);
         });
@@ -81,5 +88,3 @@ class SimpleRouter {
     }
 }
 exports.SimpleRouter = SimpleRouter;
-// console log debug on/off switch
-SimpleRouter.debug = false;

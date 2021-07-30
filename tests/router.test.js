@@ -119,6 +119,25 @@ suite.test('integration', () => {
 	assert(log2.join() === [null, null, '*', route, '/'].join());
 });
 
+suite.test('unsubscribe works', () => {
+	const log = [];
+	const router = new SimpleRouter({
+		'/': () => true
+	});
+
+	const { unsubscribe } = router.subscribe((v) => log.push(v.route));
+
+	router.exec('/');
+	const logged = log.join();
+	assert(logged === ',/');
+
+	unsubscribe();
+
+	// log must not be changed
+	router.exec('/');
+	assert(log.join() === logged);
+})
+
 suite.test('label test', () => {
 	const router = new SimpleRouter();
 

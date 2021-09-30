@@ -3,6 +3,7 @@ export interface RouteConfig {
     name: string;
     test: RegExp;
     isOptional: boolean;
+    isSpread: boolean;
 }
 export declare class SimpleRoute {
     readonly route: any;

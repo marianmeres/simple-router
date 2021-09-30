@@ -3,6 +3,9 @@
 ## [Unreleased]
 	- optional path segments
 
+## [1.8.0] - 2021-09-30
+### Added
+	- "rest segments" support
 
 ## [1.7.1] - 2021-07-09
 ### Added

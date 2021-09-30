@@ -3,6 +3,7 @@ export interface RouteConfig {
 	name: string;
 	test: RegExp;
 	isOptional: boolean;
+	isSpread: boolean;
 }
 
 export class SimpleRoute {
@@ -34,12 +35,25 @@ export class SimpleRoute {
 	}
 
 	protected static _parse(route) {
+		let wasSpread = false;
 		return SimpleRoute._sanitizeAndSplit(route).reduce((memo, segment) => {
 			let name = null;
 
 			// if optional, remove trailing '?' marker
 			let isOptional = segment.endsWith('?');
 			if (isOptional) segment = segment.slice(0, -1);
+
+			let isSpread = segment.startsWith('[...');
+			if (isSpread) {
+				if (isOptional) {
+					throw new Error('Spread segment must not be marked as optional');
+				}
+				if (wasSpread) {
+					throw new Error('Multiple spread segments are invalid');
+				}
+				wasSpread = true;
+				segment = '[' + segment.substr(4);
+			}
 
 			let test = new RegExp('^' + SimpleRoute._escapeRegExp(segment) + '$');
 
@@ -56,7 +70,7 @@ export class SimpleRoute {
 					test = new RegExp('^' + m2[2] + '$');
 				}
 			}
-			memo.push({ segment, name, test, isOptional });
+			memo.push({ segment, name, test, isOptional, isSpread });
 			return memo;
 		}, []);
 	}
@@ -83,7 +97,34 @@ export class SimpleRoute {
 			matched = SimpleRoute.parseQueryString(_backup.slice(qPos + 1));
 		}
 
-		const segments = SimpleRoute._sanitizeAndSplit(url);
+		let segments = SimpleRoute._sanitizeAndSplit(url);
+
+		// SPREAD PARAMS DANCING BLOCK - if there are "spread" definitions we need to adjust input
+		// that is "group" (join) segments that were initially splitted
+		const hasSpread = !!this._parsed.filter((v) => v.isSpread).length;
+		if (hasSpread) {
+			let newSegments = [];
+			this._parsed.forEach((p, i) => {
+				if (p.isSpread) {
+					// there are defined segments after the "spread" definition
+					if (this._parsed[i + 1]) {
+						// SimpleRoute
+						newSegments.push(
+							segments.slice(0, this._parsed.length - i).join(SimpleRoute.SPLITTER)
+						);
+						segments = segments.slice(this._parsed.length - i);
+					}
+					// there are no more defined segments
+					else {
+						newSegments.push(segments.join(SimpleRoute.SPLITTER));
+					}
+				} else {
+					newSegments = newSegments.concat(segments.slice(0, 1));
+					segments = segments.slice(1);
+				}
+			});
+			segments = newSegments;
+		}
 
 		// minimum required (not optional) segments length
 		const reqLen = this._parsed.reduce((memo, p, idx, arr) => {

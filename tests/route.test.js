@@ -60,6 +60,11 @@ const rpad = (s, len = 25) => (s += ' '.repeat(Math.max(0, len - s.length)));
 	['/foo/[bar]?/[baz]?',        '/foo',             {}],
 	['/foo/[bar]?/[baz]?',        '/foo/bar',         { bar: 'bar' }],
 	['/foo/[bar]?/[baz]?',        '/foo/bar/baz',     { bar: 'bar', baz: 'baz' }],
+	// spread params
+	['/js/[...path]',             '/js/foo/bar/baz.js', { 'path': 'foo/bar/baz.js' }],
+	['/js/[root]/[...path]',      '/js/foo/bar/baz.js', { 'root': 'foo', 'path': 'bar/baz.js' }],
+	['/js/[...path]/[file]',      '/js/foo/bar/baz.js', { 'path': 'foo/bar', 'file': 'baz.js' }],
+	['/[...path]/[file]',         '/foo/bar/baz.js',    { 'path': 'foo/bar', 'file': 'baz.js' }],
 ]
 	.forEach(([route, input, expected, only]) => {
 		suite[only ? 'only' : 'test'](
@@ -91,6 +96,16 @@ suite.test('query params parsing can be disabled', () => {
 	// note added slash
 	actual = new SimpleRoute('/foo/[bar]').parse('/foo/bar/?baz=bat', false);
 	assert(_.isEqual(actual, null), JSON.stringify(actual));
+});
+
+// prettier-ignore
+suite.test('spread segment must not be optional', () => {
+	assert.throws(() => new SimpleRoute('[...path]?'));
+});
+
+// prettier-ignore
+suite.test('there can only be one spread segment', () => {
+	assert.throws(() => new SimpleRoute('/foo/[...some]/bar/[...another]'));
 });
 
 //

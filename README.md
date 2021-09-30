@@ -60,6 +60,7 @@ Route segments:
 - `[name]` matches `any` and is resolved as `{ name: 'any' }` param
 - `[name(regex)]` matches if `regex.test(segment)` is truthy
 - `exact?` or `[name]?` marks segment as optional
+- `[...name]` matches "rest segments"
 
 Few notes on segments separators (which is slash `/` by default):
 - multiple ones are always normalized to single,
@@ -90,8 +91,6 @@ Few notes on segments separators (which is slash `/` by default):
 | `/foo/[bar]?`             | `/foo`             | `{}`                        |
 | `/foo/[bar]?`             | `/foo/bar`         | `{ bar: 'bar' }`            |
 | `/foo/[bar]?/baz`         | `/foo/bar/baz`     | `{ bar: 'bar' }`            |
-
+| `/[...path]/[file]`       | `/foo/bar/baz.js`  | `{ path': 'foo/bar', file: 'baz.js' }`|
 See [tests](tests) or [examples](examples) for more.
 
-## Todo (maybe)
-- `[...name]` _rest_ segment support

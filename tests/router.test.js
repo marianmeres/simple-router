@@ -122,7 +122,7 @@ suite.test('integration', () => {
 suite.test('unsubscribe works', () => {
 	const log = [];
 	const router = new SimpleRouter({
-		'/': () => true
+		'/': () => true,
 	});
 
 	const { unsubscribe } = router.subscribe((v) => log.push(v.route));
@@ -136,7 +136,7 @@ suite.test('unsubscribe works', () => {
 	// log must not be changed
 	router.exec('/');
 	assert(log.join() === logged);
-})
+});
 
 suite.test('label test', () => {
 	const router = new SimpleRouter();

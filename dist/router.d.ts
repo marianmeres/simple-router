@@ -9,7 +9,7 @@ export declare class SimpleRouter {
         label: string;
     };
     protected _subscriptions: Set<Function>;
-    constructor(config: {
+    constructor(config?: {
         [route: string]: Function;
     });
     protected _dbg(...a: any[]): void;

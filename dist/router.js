@@ -15,7 +15,7 @@ class SimpleRouter {
     };
     // https://svelte.dev/docs#Store_contract
     _subscriptions = new Set();
-    constructor(config) {
+    constructor(config = null) {
         Object.entries(config || {}).forEach(([route, cb]) => {
             this.on(route, cb);
         });

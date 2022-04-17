@@ -18,7 +18,7 @@ export class SimpleRouter {
 	// https://svelte.dev/docs#Store_contract
 	protected _subscriptions = new Set<Function>();
 
-	constructor(config: { [route: string]: Function }) {
+	constructor(config: { [route: string]: Function } = null) {
 		Object.entries(config || {}).forEach(([route, cb]) => {
 			this.on(route, cb);
 		});

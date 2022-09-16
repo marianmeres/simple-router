@@ -52,7 +52,7 @@ class SimpleRouter {
             if (params) {
                 this._publishCurrent(route.route, params, label);
                 this._dbg(`${dbgPrefix}matches '${route.route}' with`, params);
-                return isFn(cb) ? cb(params) : true;
+                return isFn(cb) ? cb(params, route.route) : true;
             }
         }
         if (isFn(fallbackFn)) {
@@ -63,7 +63,7 @@ class SimpleRouter {
         if (isFn(this._catchAll)) {
             this._publishCurrent('*', null, null);
             this._dbg(`${dbgPrefix}catchall...`);
-            return this._catchAll();
+            return this._catchAll(null, '*');
         }
         this._publishCurrent(null, null, null);
         this._dbg(`${dbgPrefix}no match...`);

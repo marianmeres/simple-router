@@ -32,6 +32,24 @@ suite.test('sanity check', () => {
 	assert(log.join() === 'index');
 });
 
+suite.test('route id callback param', () => {
+	const log = [];
+	const router = new SimpleRouter({
+		'*': (params, routeId) => log.push([params, routeId]),
+		'/[foo]': (params, routeId) => log.push([params, routeId]),
+	});
+
+	router.exec('/');
+	router.exec('/bar');
+	router.exec('/');
+
+	assert(JSON.stringify(log) === JSON.stringify([
+		[null, '*'],
+		[{ foo: 'bar' }, '/[foo]'],
+		[null, '*'],
+	]));
+});
+
 suite.test('first match wins', () => {
 	const log = [];
 	const router = new SimpleRouter();

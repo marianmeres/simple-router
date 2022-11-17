@@ -1,7 +1,7 @@
-const path = require('path');
+const path = require('node:path');
 const _ = require('lodash');
-const assert = require('assert').strict;
-const { TestRunner } = require('test-runner');
+const assert = require('node:assert').strict;
+const { TestRunner } = require('@marianmeres/test-runner');
 const { SimpleRoute } = require('../dist');
 
 const suite = new TestRunner(path.basename(__filename));

@@ -1,43 +1,22 @@
-# Simple router
+# @marianmeres/simple-router
 
-Minimalistic (zero dependencies, ~200 lines) route parser for [sapper-like regex
-routes](https://sapper.svelte.dev/docs#Regexes_in_routes). Intended primarily for
-client side SPA routing, but can be used for any simple string based
-dispatching needs (e.g. server side websocket message routing, etc...)
+Small path-like string parser. Originally inspired by
+[sapper-like regex routes](https://sapper.svelte.dev/docs#Regexes_in_routes).
+Intended primarily for - but not limited to - client side SPA routing.
 
 ## Installation
 
 ```shell
-npm install https://github.com/marianmeres/simple-router
+npm i @marianmeres/simple-router
 ```
 
-## Quick start
-
-There are two objects `SimpleRoute` and `SimpleRouter`. `SimpleRouter` keeps collection of
-`SimpleRoute`s and performs match on them in order in which they were registered. First match wins.
-
-`SimpleRoute` is hidden from the top level router api, but internally does this:
-```js
-const result = new SimpleRoute('/route/definition').parse(input);
-```
-where `result` is either `null` (no match) or params `object` (input matched). Params
-object will be empty `{}` if there are no named segments. Named segment is defined in
-brackets, e.g.: `/[foo]`.
-
-`SimpleRouter` does:
-- register routes with their "on match" callbacks: `router.on('/route/definition', callback)`
-- perform match `router.exec(input)`, which will **return** the matched route's executed callback.
-The callback can either do actual work (e.g. render page) or return an arbitrary value
-for later consumption (e.g. return component instance). Callback receives the matched
-route's parsed params object as a parameter.
-
-Example code:
+## Quick example
 
 ```js
 // routes definitions can be added via ctor config object
 const router = new SimpleRouter({
     '/': () => pageIndex(),
-    '*': () => page404(), // special case catch-all (last resort fallback)
+    '*': () => page404(), // catch all (last resort fallback)
 });
 
 // or via "on" api

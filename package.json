@@ -17,6 +17,7 @@
     "build": "npm run clean && rollup -c",
     "dev": "npm run clean && rollup -c -w",
     "prettier": "prettier --write \"{src,tests,examples}/**/*.{js,ts,json}\"",
+    "release": "release",
     "test": "test-runner",
     "test:watch": "nodemon -q -w dist -w tests -x test-runner --"
   },

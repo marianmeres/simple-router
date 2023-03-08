@@ -1,9 +1,10 @@
-const path = require('node:path');
-const assert = require('node:assert').strict;
-const { TestRunner } = require('@marianmeres/test-runner');
-const { SimpleRouter } = require('../dist');
+import path from 'node:path';
+import { strict as assert } from 'node:assert';
+import { TestRunner } from '@marianmeres/test-runner';
+import { fileURLToPath } from 'node:url';
+import { SimpleRouter } from '../dist/index.js';
 
-const suite = new TestRunner(path.basename(__filename));
+const suite = new TestRunner(path.basename(fileURLToPath(import.meta.url)));
 
 suite.test('sanity check', () => {
 	const log = [];
@@ -43,11 +44,14 @@ suite.test('route id callback param', () => {
 	router.exec('/bar');
 	router.exec('/');
 
-	assert(JSON.stringify(log) === JSON.stringify([
-		[null, '*'],
-		[{ foo: 'bar' }, '/[foo]'],
-		[null, '*'],
-	]));
+	assert(
+		JSON.stringify(log) ===
+			JSON.stringify([
+				[null, '*'],
+				[{ foo: 'bar' }, '/[foo]'],
+				[null, '*'],
+			])
+	);
 });
 
 suite.test('first match wins', () => {
@@ -170,8 +174,4 @@ suite.test('label test', () => {
 });
 
 //
-if (require.main === module) {
-	suite.run();
-}
-
-module.exports = suite;
+export default suite;

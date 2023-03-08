@@ -1,10 +1,11 @@
-const path = require('node:path');
-const _ = require('lodash');
-const assert = require('node:assert').strict;
-const { TestRunner } = require('@marianmeres/test-runner');
-const { SimpleRoute } = require('../dist');
+import path from 'node:path';
+import _ from 'lodash';
+import { strict as assert } from 'node:assert';
+import { TestRunner } from '@marianmeres/test-runner';
+import { fileURLToPath } from 'node:url';
+import { SimpleRoute } from '../dist/index.js';
 
-const suite = new TestRunner(path.basename(__filename));
+const suite = new TestRunner(path.basename(fileURLToPath(import.meta.url)));
 
 const rpad = (s, len = 25) => (s += ' '.repeat(Math.max(0, len - s.length)));
 
@@ -109,8 +110,4 @@ suite.test('there can only be one spread segment', () => {
 });
 
 //
-if (require.main === module) {
-	suite.run();
-}
-
-module.exports = suite;
+export default suite;

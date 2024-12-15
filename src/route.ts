@@ -52,13 +52,13 @@ export class SimpleRoute {
 					throw new Error('Multiple spread segments are invalid');
 				}
 				wasSpread = true;
-				segment = '[' + segment.substr(4);
+				segment = '[' + segment.slice(4);
 			}
 
 			let test = new RegExp('^' + SimpleRoute._escapeRegExp(segment) + '$');
 
 			// starting with at least one word char within brackets...
-			let m = segment.match(/^\[(\w.+)]$/);
+			let m = segment.match(/^\[(\w.*)]$/);
 			if (m) {
 				name = m[1];
 				test = /.+/;

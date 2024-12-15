@@ -66,6 +66,8 @@ const rpad = (s, len = 25) => (s += ' '.repeat(Math.max(0, len - s.length)));
 	['/js/[root]/[...path]',      '/js/foo/bar/baz.js', { 'root': 'foo', 'path': 'bar/baz.js' }],
 	['/js/[...path]/[file]',      '/js/foo/bar/baz.js', { 'path': 'foo/bar', 'file': 'baz.js' }],
 	['/[...path]/[file]',         '/foo/bar/baz.js',    { 'path': 'foo/bar', 'file': 'baz.js' }],
+	// single char param name
+	['/[f]',                      '/bar',              { f: 'bar' }],
 ]
 	.forEach(([route, input, expected, only]) => {
 		suite[only ? 'only' : 'test'](

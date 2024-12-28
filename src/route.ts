@@ -8,6 +8,7 @@ export interface RouteConfig {
 
 export class SimpleRoute {
 	static SPLITTER = '/';
+	static WILDCARD = '*';
 
 	protected _parsed: RouteConfig[];
 
@@ -36,7 +37,8 @@ export class SimpleRoute {
 
 	protected static _parse(route) {
 		let wasSpread = false;
-		return SimpleRoute._sanitizeAndSplit(route).reduce((memo, segment) => {
+		let wasWildcard = false;
+		return SimpleRoute._sanitizeAndSplit(route).reduce((memo, segment, idx, all) => {
 			let name = null;
 
 			// if optional, remove trailing '?' marker
@@ -57,19 +59,35 @@ export class SimpleRoute {
 
 			let test = new RegExp('^' + SimpleRoute._escapeRegExp(segment) + '$');
 
-			// starting with at least one word char within brackets...
-			let m = segment.match(/^\[(\w.*)]$/);
-			if (m) {
-				name = m[1];
-				test = /.+/;
+			// catch all wildcard
+			if (segment === SimpleRoute.WILDCARD) {
+				if (idx < all.length - 1) {
+					throw new Error(
+						`Wildcard '${SimpleRoute.WILDCARD}' can be used only as a last segment`
+					);
+				}
+				wasWildcard = true;
+			} else {
+				// starting with at least one word char within brackets...
+				let m = segment.match(/^\[(\w.*)]$/);
+				if (m) {
+					name = m[1];
+					test = /.+/;
 
-				// id([0-9]+)
-				let m2 = m[1].match(/^(\w.*)\((.+)\)$/);
-				if (m2) {
-					name = m2[1];
-					test = new RegExp('^' + m2[2] + '$');
+					// id([0-9]+)
+					let m2 = m[1].match(/^(\w.*)\((.+)\)$/);
+					if (m2) {
+						name = m2[1];
+						test = new RegExp('^' + m2[2] + '$');
+					}
 				}
 			}
+
+			if (wasWildcard) {
+				isOptional = true;
+				test = /.*/;
+			}
+
 			memo.push({ segment, name, test, isOptional, isSpread });
 			return memo;
 		}, []);
@@ -124,6 +142,11 @@ export class SimpleRoute {
 				}
 			});
 			segments = newSegments;
+		}
+
+		// return early special case: first segment is a wildcard
+		if (this._parsed?.[0]?.segment === SimpleRoute.WILDCARD) {
+			return matched;
 		}
 
 		// minimum required (not optional) segments length

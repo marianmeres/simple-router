@@ -40,6 +40,7 @@ Route segments:
 - `[name(regex)]` matches if `regex.test(segment)` is truthy
 - `exact?` or `[name]?` marks segment as optional
 - `[...name]` matches "rest segments"
+- `*` matches zero or more following segments
 
 Few notes on segments separators (which is slash `/` by default):
 - multiple ones are always normalized to single,
@@ -68,8 +69,11 @@ Few notes on segments separators (which is slash `/` by default):
 | `/foo/[id([0-9]+)]/[bar]` | `/foo/bar/baz`     | `null`                      |
 | `/foo/[([0-9]+)]`         | `/foo/123`         | `null` (missing name before regex) |
 | `/foo/[bar]?`             | `/foo`             | `{}`                        |
-| `/foo/[bar]?`             | `/foo/bar`         | `{ bar: 'bar' }`            |
-| `/foo/[bar]?/baz`         | `/foo/bar/baz`     | `{ bar: 'bar' }`            |
-| `/[...path]/[file]`       | `/foo/bar/baz.js`  | `{ path': 'foo/bar', file: 'baz.js' }`|
+| `/foo/[bar]?`             | `/foo/bar`         | `{ bar: "bar" }`            |
+| `/foo/[bar]?/baz`         | `/foo/bar/baz`     | `{ bar: "bar" }`            |
+| `/[...path]/[file]`       | `/foo/bar/baz.js`  | `{ path: "foo/bar", file: "baz.js" }`|
+| `/foo/*`                  | `/foo/bar`         | `{}`                        |
+| `/[foo]/*`                | `/foo/bar`         | `{ foo: "foo" }`            |
+| `/*`                      | `/foo/bar`         | `{}`                        |
 See [tests](tests) or [examples](examples) for more.
 

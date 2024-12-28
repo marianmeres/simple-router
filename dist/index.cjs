@@ -120,7 +120,8 @@ class SimpleRoute {
             });
             segments = newSegments;
         }
-        // return early special case: first segment is a wildcard
+        // return early no-op special case: first segment is a wildcard
+        // (no need to process further)
         if (this._parsed?.[0]?.segment === SimpleRoute.WILDCARD) {
             return matched;
         }
@@ -144,6 +145,9 @@ class SimpleRoute {
             }
             if (p.name) {
                 matched[decodeURIComponent(p.name)] = decodeURIComponent(s);
+            }
+            if (p.segment === SimpleRoute.WILDCARD) {
+                break;
             }
         }
         return matched;

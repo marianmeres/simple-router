@@ -72,7 +72,7 @@ Few notes on segments separators (which is slash `/` by default):
 | `/foo/[bar]?`             | `/foo/bar`         | `{ bar: "bar" }`            |
 | `/foo/[bar]?/baz`         | `/foo/bar/baz`     | `{ bar: "bar" }`            |
 | `/[...path]/[file]`       | `/foo/bar/baz.js`  | `{ path: "foo/bar", file: "baz.js" }`|
-| `/foo/*`                  | `/foo/bar`         | `{}`                        |
+| `/foo/*`                  | `/foo/bar/baz.js`  | `{}`                        |
 | `/[foo]/*`                | `/foo/bar`         | `{ foo: "foo" }`            |
 | `/*`                      | `/foo/bar`         | `{}`                        |
 See [tests](tests) or [examples](examples) for more.

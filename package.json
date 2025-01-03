@@ -1,50 +1,51 @@
 {
-  "name": "@marianmeres/simple-router",
-  "version": "2.0.1",
-  "description": "Minimalistic route parser for sapper-like regex routes",
-  "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "exports": {
-    "require": "./dist/index.cjs",
-    "import": "./dist/index.js"
-  },
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
-  "scripts": {
-    "clean": "rimraf dist/*",
-    "build": "npm run clean && rollup -c",
-    "dev": "npm run clean && rollup -c -w",
-    "prettier": "prettier --write \"{src,tests,examples}/**/*.{js,ts,json}\"",
-    "release": "release",
-    "test": "test-runner",
-    "test:watch": "nodemon -q -w dist -w tests -x test-runner --"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/marianmeres/simple-router.git"
-  },
-  "keywords": [
-    "router"
-  ],
-  "author": "Marian Meres <marian@meres.sk>",
-  "license": "WTFPL",
-  "bugs": {
-    "url": "https://github.com/marianmeres/simple-router/issues"
-  },
-  "homepage": "https://github.com/marianmeres/simple-router#readme",
-  "devDependencies": {
-    "@marianmeres/release": "^0.0.7",
-    "@marianmeres/test-runner": "^2.0.8",
-    "@rollup/plugin-typescript": "^9.0.2",
-    "@types/node": "^14.18.33",
-    "lodash": "^4.17.21",
-    "prettier": "^2.2.1",
-    "rimraf": "^3.0.2",
-    "rollup": "^3.3.0",
-    "tslib": "^2.4.1",
-    "typescript": "^4.8.4"
-  }
+	"name": "@marianmeres/simple-router",
+	"version": "2.1.0",
+	"description": "Minimalistic route parser for sapper-like regex routes",
+	"type": "module",
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"exports": {
+		"require": "./dist/index.cjs",
+		"import": "./dist/index.js"
+	},
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"clean": "rimraf dist/*",
+		"build": "npm run clean && rollup -c",
+		"dev": "npm run clean && rollup -c -w",
+		"prettier": "prettier --write \"{src,tests,examples}/**/*.{js,ts,json}\"",
+		"release": "release -v minor",
+		"release:patch": "release -v patch",
+		"test": "test-runner",
+		"test:watch": "nodemon -q -w dist -w tests -x test-runner --"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/marianmeres/simple-router.git"
+	},
+	"keywords": [
+		"router"
+	],
+	"author": "Marian Meres <marian@meres.sk>",
+	"license": "WTFPL",
+	"bugs": {
+		"url": "https://github.com/marianmeres/simple-router/issues"
+	},
+	"homepage": "https://github.com/marianmeres/simple-router#readme",
+	"devDependencies": {
+		"@marianmeres/release": "^1.1.2",
+		"@marianmeres/test-runner": "^2.0.8",
+		"@rollup/plugin-typescript": "^9.0.2",
+		"@types/node": "^14.18.33",
+		"lodash": "^4.17.21",
+		"prettier": "^2.2.1",
+		"rimraf": "^3.0.2",
+		"rollup": "^3.3.0",
+		"tslib": "^2.4.1",
+		"typescript": "^4.8.4"
+	}
 }

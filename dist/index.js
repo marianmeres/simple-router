@@ -173,6 +173,13 @@ class SimpleRouter {
     _dbg(...a) {
         SimpleRouter.debug && console.log('[SimpleRouter]', ...a);
     }
+    /** Will report map of registered routes and their labels. Intended for debugging. */
+    info() {
+        return this._routes.reduce((m, r) => {
+            m[r[0].route] = r[3];
+            return m;
+        }, {});
+    }
     reset() {
         this._routes = [];
         return this;

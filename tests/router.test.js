@@ -173,5 +173,17 @@ suite.test('label test', () => {
 	assert(router.current.label === 'bar');
 });
 
+suite.test('info test', () => {
+	const router = new SimpleRouter();
+
+	router.on('/foo', () => null, { label: 'foo' });
+	router.on('/bar', () => null, { label: 'bar' });
+
+	const info = router.info();
+	assert(info['/foo'] === 'foo');
+	assert(info['/bar'] === 'bar');
+	assert(Object.keys(info).length === 2);
+});
+
 //
 export default suite;

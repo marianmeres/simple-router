@@ -13,6 +13,8 @@ export declare class SimpleRouter {
         [route: string]: Function;
     });
     protected _dbg(...a: any[]): void;
+    /** Will report map of registered routes and their labels. Intended for debugging. */
+    info(): Record<string, string>;
     reset(): this;
     get current(): {
         route: string;

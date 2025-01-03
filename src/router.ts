@@ -28,6 +28,14 @@ export class SimpleRouter {
 		SimpleRouter.debug && console.log('[SimpleRouter]', ...a);
 	}
 
+	/** Will report map of registered routes and their labels. Intended for debugging. */
+	info(): Record<string, string> {
+		return this._routes.reduce((m, r) => {
+			m[r[0].route] = r[3];
+			return m;
+		}, {});
+	}
+
 	reset() {
 		this._routes = [];
 		return this;

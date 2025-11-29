@@ -268,12 +268,13 @@ export class SimpleRouter {
 	 * const component = router.exec("/home");
 	 * ```
 	 */
+	// deno-lint-ignore no-explicit-any
 	exec(url: string, fallbackFn?: RouteCallback): any {
 		const dbgPrefix = `'${url}' -> `;
 
 		for (const [route, cb, allowQueryParams, label] of this.#routes) {
-			// first match wins
-			// parse returns null or params object (which can be empty)
+			// First match wins
+			// Parse returns null or a params object (which can be empty)
 			const params = route.parse(url, allowQueryParams);
 			if (params !== null) {
 				this.#publishCurrent(route.route, params, label);

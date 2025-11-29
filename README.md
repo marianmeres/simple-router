@@ -17,13 +17,9 @@ Originally inspired by [Sapper-like regex routes](https://sapper.svelte.dev/docs
 
 ## Installation
 
-### Deno
-
-```ts
-import { SimpleRouter } from "jsr:@marianmeres/simple-router";
+```shell
+deno add "jsr:@marianmeres/simple-router";
 ```
-
-### Node.js / Bun
 
 ```shell
 npm install @marianmeres/simple-router
@@ -279,32 +275,6 @@ window.addEventListener("hashchange", () => {
 
 // Trigger initial render
 window.dispatchEvent(new HashChangeEvent("hashchange"));
-```
-
-### With Reactive Framework (Svelte)
-
-```svelte
-<script>
-	import { SimpleRouter } from "@marianmeres/simple-router";
-
-	const router = new SimpleRouter({
-		"/": () => HomePage,
-		"/about": () => AboutPage,
-	});
-
-	// Router is already a Svelte store!
-	$: currentRoute = $router.route;
-	$: params = $router.params;
-</script>
-
-<nav>
-	<a href="#/">Home</a>
-	<a href="#/about">About</a>
-</nav>
-
-<main>
-	Current route: {currentRoute}
-</main>
 ```
 
 ### Route Priority

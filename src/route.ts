@@ -51,11 +51,11 @@ export class SimpleRoute {
 		return (
 			`${str}`
 				.trim()
-				// splitter trim left and right
+				// Trim splitters from left and right
 				.replace(new RegExp(`^(${s})+`), "")
 				.replace(new RegExp(`(${s})+$`), "")
 				.split(SimpleRoute.SPLITTER)
-				// remove empty segments... will "normalize" multiple splitters into one
+				// Remove empty segments (normalizes multiple splitters into one)
 				.filter(Boolean)
 		);
 	}
@@ -67,7 +67,7 @@ export class SimpleRoute {
 			(memo, segment, idx, all) => {
 				let name = null;
 
-				// if optional, remove trailing '?' marker
+				// If optional, remove trailing '?' marker
 				let isOptional = segment.endsWith("?");
 				if (isOptional) segment = segment.slice(0, -1);
 
@@ -85,7 +85,7 @@ export class SimpleRoute {
 
 				let test = new RegExp("^" + SimpleRoute.#escapeRegExp(segment) + "$");
 
-				// catch all wildcard
+				// Catch-all wildcard
 				if (segment === SimpleRoute.WILDCARD) {
 					if (idx < all.length - 1) {
 						throw new Error(
@@ -94,7 +94,7 @@ export class SimpleRoute {
 					}
 					wasWildcard = true;
 				} else {
-					// starting with at least one word char within brackets...
+					// Starts with at least one word character within brackets
 					const m = segment.match(/^\[(\w.*)]$/);
 					if (m) {
 						name = m[1];
@@ -201,14 +201,14 @@ export class SimpleRoute {
 
 		let segments = SimpleRoute.#sanitizeAndSplit(url);
 
-		// SPREAD PARAMS DANCING BLOCK - if there are "spread" definitions we need to adjust input
-		// that is "group" (join) segments that were initially splitted
+		// If there are spread definitions, we need to adjust input by grouping
+		// (joining) segments that were initially split
 		const hasSpread = this.#parsed.some((v) => v.isSpread);
 		if (hasSpread) {
 			let newSegments: string[] = [];
 			this.#parsed.forEach((p, i) => {
 				if (p.isSpread) {
-					// there are defined segments after the "spread" definition
+					// There are defined segments after the spread definition
 					if (this.#parsed[i + 1]) {
 						newSegments.push(
 							segments
@@ -217,7 +217,7 @@ export class SimpleRoute {
 						);
 						segments = segments.slice(this.#parsed.length - i);
 					}
-					// there are no more defined segments
+					// There are no more defined segments
 					else {
 						newSegments.push(segments.join(SimpleRoute.SPLITTER));
 					}
@@ -229,23 +229,23 @@ export class SimpleRoute {
 			segments = newSegments;
 		}
 
-		// return early no-op special case: first segment is a wildcard
+		// Return early (special case): first segment is a wildcard
 		// (no need to process further)
 		if (this.#parsed?.[0]?.segment === SimpleRoute.WILDCARD) {
 			return matched;
 		}
 
-		// minimum required (not optional) segments length
+		// Minimum required (non-optional) segment count
 		const reqLen = this.#parsed.reduce((memo, p, idx, arr) => {
 			const next = arr[idx + 1];
-			// if is not optional or has not optional still to come
+			// If segment is not optional or has non-optional segments still to come
 			if (!p.isOptional || (next && !next.isOptional)) {
 				memo++;
 			}
 			return memo;
 		}, 0);
 
-		// quick cheap check: if counts dont match = no match
+		// Quick check: if counts don't match, no match
 		if (segments.length < reqLen) {
 			return null;
 		}

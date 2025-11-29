@@ -27,14 +27,21 @@ export class SimpleRoute {
 	/**
 	 * Creates a new SimpleRoute instance.
 	 *
-	 * @param route - Route pattern string
+	 * @param route - Pattern string to match against (URL, file path, command, or any string identifier)
 	 * @throws {Error} If route pattern is invalid (e.g., multiple spread segments)
 	 *
 	 * @example
 	 * ```ts
+	 * // URL patterns
 	 * new SimpleRoute("/user/[id]");
 	 * new SimpleRoute("/post/[id([0-9]+)]");
 	 * new SimpleRoute("/api/[...path]");
+	 *
+	 * // File path patterns
+	 * new SimpleRoute("src/[module]/[file].ts");
+	 *
+	 * // Command patterns
+	 * new SimpleRoute("user:delete:[id]");
 	 * ```
 	 */
 	constructor(public readonly route: string) {
@@ -165,15 +172,16 @@ export class SimpleRoute {
 	}
 
 	/**
-	 * Parses a URL against this route pattern.
-	 * Returns extracted parameters if the URL matches, null otherwise.
+	 * Parses a string against this route pattern.
+	 * Returns extracted parameters if the string matches, null otherwise.
 	 *
-	 * @param url - URL path to test (with or without query string)
+	 * @param url - String to test against the pattern (can be a URL, file path, command, etc.)
 	 * @param allowQueryParams - Whether to parse query string parameters (default: true)
 	 * @returns Object with extracted parameters, or null if no match
 	 *
 	 * @example
 	 * ```ts
+	 * // URL matching
 	 * const route = new SimpleRoute("/user/[id]");
 	 *
 	 * route.parse("/user/123");
@@ -187,6 +195,16 @@ export class SimpleRoute {
 	 *
 	 * route.parse("/post/456");
 	 * // Returns: null - no match
+	 *
+	 * // File path matching
+	 * const fileRoute = new SimpleRoute("src/[module]/[file].ts");
+	 * fileRoute.parse("src/components/Button.ts");
+	 * // Returns: { module: "components", file: "Button" }
+	 *
+	 * // Command matching
+	 * const cmdRoute = new SimpleRoute("user:delete:[id]");
+	 * cmdRoute.parse("user:delete:123");
+	 * // Returns: { id: "123" }
 	 * ```
 	 */
 	parse(url: string, allowQueryParams = true): RouteParams | null {

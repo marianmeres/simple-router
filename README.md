@@ -1,8 +1,8 @@
 # @marianmeres/simple-router
 
-A lightweight, framework-agnostic URL router with support for dynamic parameters, wildcards, query strings, and reactive subscriptions.
+A lightweight, framework-agnostic string pattern matcher and router with support for dynamic parameters, wildcards, query strings, and reactive subscriptions.
 
-Originally inspired by [Sapper-like regex routes](https://sapper.svelte.dev/docs#Regexes_in_routes). Intended primarily for - but not limited to - client-side SPA routing.
+Can match any string identifiers - URLs, file paths, command names, or custom patterns. Originally inspired by [Sapper-like regex routes](https://sapper.svelte.dev/docs#Regexes_in_routes). Primarily designed for client-side SPA routing, but flexible enough for any pattern matching needs.
 
 ## Features
 
@@ -302,6 +302,47 @@ To fix, register more specific routes first:
 ```ts
 router.on("/user/admin", () => console.log("Admin"));
 router.on("/user/[id]", (params) => console.log("User:", params?.id));
+```
+
+### Beyond URLs: General Pattern Matching
+
+The router can match any string patterns, not just URLs:
+
+```ts
+// File path routing
+const fileRouter = new SimpleRouter({
+	"src/[module]/[file].ts": ({ module, file }) =>
+		console.log(`Module: ${module}, File: ${file}`),
+	"assets/images/[...path]": ({ path }) =>
+		console.log(`Image path: ${path}`),
+});
+
+fileRouter.exec("src/components/Button.ts");
+// Logs: "Module: components, File: Button"
+
+fileRouter.exec("assets/images/icons/user.png");
+// Logs: "Image path: icons/user.png"
+
+// Command routing
+const cmdRouter = new SimpleRouter({
+	"user:create": () => createUser(),
+	"user:delete:[id([0-9]+)]": ({ id }) => deleteUser(id),
+	"cache:clear:[type(redis|memcached)]?": ({ type = "all" }) =>
+		clearCache(type),
+});
+
+cmdRouter.exec("user:delete:123");
+cmdRouter.exec("cache:clear:redis");
+cmdRouter.exec("cache:clear"); // type defaults to "all"
+
+// Custom separator (anything that's not a special regex char works)
+const dotRouter = new SimpleRouter({
+	"app.settings.theme": () => "Theme settings",
+	"app.settings.[section]": ({ section }) => `Settings: ${section}`,
+});
+
+dotRouter.exec("app.settings.profile");
+// Returns: "Settings: profile"
 ```
 
 ## License

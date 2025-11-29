@@ -89,13 +89,18 @@ type RouteEntry = [SimpleRoute, RouteCallback, boolean, string | null];
 const PUBSUB_TOPIC = "current";
 
 /**
- * A simple, framework-agnostic URL router with support for dynamic parameters,
- * wildcards, query strings, and reactive subscriptions.
+ * A simple, framework-agnostic string pattern matcher and router with support
+ * for dynamic parameters, wildcards, query strings, and reactive subscriptions.
+ *
+ * Can match any string identifiers - URLs, file paths, command names, or custom patterns.
+ * Primarily designed for client-side SPA routing, but flexible enough for any pattern
+ * matching needs.
  *
  * @example
  * ```ts
  * import { SimpleRouter } from "@marianmeres/simple-router";
  *
+ * // URL routing
  * const router = new SimpleRouter({
  *   "/": () => console.log("Home"),
  *   "/user/[id]": (params) => console.log("User:", params?.id),
@@ -103,6 +108,14 @@ const PUBSUB_TOPIC = "current";
  * });
  *
  * router.exec("/user/123"); // Logs: "User: 123"
+ *
+ * // Command routing
+ * const cmdRouter = new SimpleRouter({
+ *   "user:create": () => createUser(),
+ *   "user:delete:[id]": ({ id }) => deleteUser(id),
+ * });
+ *
+ * cmdRouter.exec("user:delete:123");
  * ```
  */
 export class SimpleRouter {
@@ -245,21 +258,27 @@ export class SimpleRouter {
 	}
 
 	/**
-	 * Executes route matching against the provided URL.
+	 * Executes pattern matching against the provided string.
 	 * Returns the value returned by the matched route's callback.
 	 * Routes are tested in registration order - first match wins.
 	 *
-	 * @param url - URL path to match (with or without query string)
+	 * @param url - String to match against registered patterns (can be a URL, file path, command, etc.)
 	 * @param fallbackFn - Optional fallback function if no route matches
 	 * @returns The value returned by the matched callback, or false if no match
 	 *
 	 * @example
 	 * ```ts
-	 * // Basic matching
+	 * // URL matching
 	 * router.exec("/users"); // Returns result of callback
 	 *
 	 * // With query parameters
 	 * router.exec("/users?sort=name");
+	 *
+	 * // File path matching
+	 * router.exec("src/components/Button.ts");
+	 *
+	 * // Command matching
+	 * router.exec("user:delete:123");
 	 *
 	 * // With fallback
 	 * router.exec("/unknown", () => console.log("Not found"));

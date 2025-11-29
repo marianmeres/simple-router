@@ -1,13 +1,13 @@
-import path from 'node:path';
-import _ from 'lodash';
-import { strict as assert } from 'node:assert';
-import { TestRunner } from '@marianmeres/test-runner';
-import { fileURLToPath } from 'node:url';
-import { SimpleRoute } from '../dist/index.js';
+import { SimpleRoute } from "../src/route.ts";
+import { assertEquals, assertThrows } from "@std/assert";
 
-const suite = new TestRunner(path.basename(fileURLToPath(import.meta.url)));
+const rpad = (s: string, len = 25) =>
+	(s += " ".repeat(Math.max(0, len - s.length)));
 
-const rpad = (s, len = 25) => (s += ' '.repeat(Math.max(0, len - s.length)));
+// Helper to check deep equality
+const isEqual = (a: any, b: any): boolean => {
+	return JSON.stringify(a) === JSON.stringify(b);
+};
 
 // prettier-ignore
 [
@@ -82,17 +82,17 @@ const rpad = (s, len = 25) => (s += ' '.repeat(Math.max(0, len - s.length)));
 	['/*/asdf',                   '/foo',               /wildcard/i],
 	['/foo/[bar]/*',              '/foo/bar',           { bar: 'bar' }],
 ]
-	.forEach(([route, input, expected, only]) => {
-		suite[only ? 'only' : 'test'](
-			`${rpad(route, 23)} -> ${rpad(input, 16)} => ${expected instanceof RegExp ? expected : JSON.stringify(expected)}`,
+	.forEach(([route, input, expected, _only]) => {
+		Deno.test(
+			`${rpad(route as string, 23)} -> ${rpad(input as string, 16)} => ${expected instanceof RegExp ? expected : JSON.stringify(expected)}`,
 			() => {
 				try {
-					const actual = new SimpleRoute(route).parse(input);
-					assert(_.isEqual(actual, expected), JSON.stringify(actual));
+					const actual = new SimpleRoute(route as string).parse(input as string);
+					assertEquals(isEqual(actual, expected), true, JSON.stringify(actual));
 				} catch (e) {
 					if (expected instanceof RegExp) {
-						const msg = e.toString();
-						assert(msg.match(expected), `${msg} does not match ${expected}`);
+						const msg = (e as Error).toString();
+						assertEquals(expected.test(msg), true, `${msg} does not match ${expected}`);
 					} else {
 						throw e;
 					}
@@ -101,37 +101,34 @@ const rpad = (s, len = 25) => (s += ' '.repeat(Math.max(0, len - s.length)));
 		)
 	});
 
-suite.test('query params parsing works and is enabled by default', () => {
-	let actual = new SimpleRoute('/foo/[bar]').parse('/foo/bar?baz=ba%20t');
-	assert(_.isEqual(actual, { bar: 'bar', baz: 'ba t' }), JSON.stringify(actual));
+Deno.test("query params parsing works and is enabled by default", () => {
+	let actual = new SimpleRoute("/foo/[bar]").parse("/foo/bar?baz=ba%20t");
+	assertEquals(actual, { bar: "bar", baz: "ba t" }, JSON.stringify(actual));
 
 	// no match must still be no match
-	actual = new SimpleRoute('/foo/[bar]').parse('/hoho?bar=bat');
-	assert(_.isEqual(actual, null), JSON.stringify(actual));
+	actual = new SimpleRoute("/foo/[bar]").parse("/hoho?bar=bat");
+	assertEquals(actual, null, JSON.stringify(actual));
 });
 
-suite.test('path params have priority over query params', () => {
-	const actual = new SimpleRoute('/foo/[bar]').parse('/foo/bar?bar=bat');
-	assert(_.isEqual(actual, { bar: 'bar' }), JSON.stringify(actual));
+Deno.test("path params have priority over query params", () => {
+	const actual = new SimpleRoute("/foo/[bar]").parse("/foo/bar?bar=bat");
+	assertEquals(actual, { bar: "bar" }, JSON.stringify(actual));
 });
 
-suite.test('query params parsing can be disabled', () => {
-	let actual = new SimpleRoute('/foo/[bar]').parse('/foo/bar?baz=bat', false);
-	assert(_.isEqual(actual, { bar: 'bar?baz=bat' }), JSON.stringify(actual));
+Deno.test("query params parsing can be disabled", () => {
+	let actual = new SimpleRoute("/foo/[bar]").parse("/foo/bar?baz=bat", false);
+	assertEquals(actual, { bar: "bar?baz=bat" }, JSON.stringify(actual));
 	// note added slash
-	actual = new SimpleRoute('/foo/[bar]').parse('/foo/bar/?baz=bat', false);
-	assert(_.isEqual(actual, null), JSON.stringify(actual));
+	actual = new SimpleRoute("/foo/[bar]").parse("/foo/bar/?baz=bat", false);
+	assertEquals(actual, null, JSON.stringify(actual));
 });
 
 // prettier-ignore
-suite.test('spread segment must not be optional', () => {
-	assert.throws(() => new SimpleRoute('[...path]?'));
+Deno.test('spread segment must not be optional', () => {
+	assertThrows(() => new SimpleRoute('[...path]?'));
 });
 
 // prettier-ignore
-suite.test('there can only be one spread segment', () => {
-	assert.throws(() => new SimpleRoute('/foo/[...some]/bar/[...another]'));
+Deno.test('there can only be one spread segment', () => {
+	assertThrows(() => new SimpleRoute('/foo/[...some]/bar/[...another]'));
 });
-
-//
-export default suite;

@@ -1,115 +1,348 @@
-import { SimpleRoute } from './route';
+import { SimpleRoute } from "./route.ts";
+import { createPubSub } from "@marianmeres/pubsub";
 
+/**
+ * Route parameters extracted from the URL path and query string.
+ * Keys are parameter names, values are the extracted string values.
+ *
+ * @example
+ * ```ts
+ * // For route "/user/[id]" matching "/user/123"
+ * const params: RouteParams = { id: "123" };
+ * ```
+ */
+export type RouteParams = Record<string, any>;
+
+/**
+ * Callback function executed when a route matches.
+ *
+ * @param params - Extracted route parameters (null if no match)
+ * @param route - The matched route pattern string
+ * @returns Any value - useful for returning components, data, or control flow values
+ *
+ * @example
+ * ```ts
+ * const callback: RouteCallback = (params, route) => {
+ *   console.log(`Matched ${route} with params:`, params);
+ *   return MyComponent;
+ * };
+ * ```
+ */
+export type RouteCallback = (params: RouteParams | null, route: string) => any;
+
+/**
+ * Represents the current router state including the matched route,
+ * extracted parameters, and optional label.
+ */
+export interface RouterCurrent {
+	/** The matched route pattern, "*" for catch-all, or null if no match */
+	route: string | null;
+	/** Extracted parameters from the URL, or null if no match */
+	params: RouteParams | null;
+	/** Optional label associated with the route for debugging */
+	label: string | null;
+}
+
+/**
+ * Options for registering routes with the `on()` method.
+ */
+export interface RouterOnOptions {
+	/** Optional label for debugging - useful for identifying routes */
+	label?: string | null;
+	/** Whether to parse query parameters (default: true) */
+	allowQueryParams?: boolean;
+}
+
+/**
+ * Configuration object for initializing the router with routes.
+ * Maps route patterns to their callback functions.
+ *
+ * @example
+ * ```ts
+ * const config: RouterConfig = {
+ *   "/": () => HomePage,
+ *   "/user/[id]": (params) => UserPage(params?.id),
+ *   "*": () => NotFoundPage
+ * };
+ * ```
+ */
+export type RouterConfig = Record<string, RouteCallback>;
+
+/**
+ * Subscription object returned by the `subscribe()` method.
+ * Follows the Svelte store contract and RxJS Observable interface.
+ */
+export interface RouterSubscription {
+	/** Unsubscribe from router state changes */
+	unsubscribe: () => void;
+}
+
+/**
+ * Subscriber callback function that receives router state changes.
+ *
+ * @param current - The current router state
+ */
+export type RouterSubscriber = (current: RouterCurrent) => void;
+
+type RouteEntry = [SimpleRoute, RouteCallback, boolean, string | null];
+
+const PUBSUB_TOPIC = "current";
+
+/**
+ * A simple, framework-agnostic URL router with support for dynamic parameters,
+ * wildcards, query strings, and reactive subscriptions.
+ *
+ * @example
+ * ```ts
+ * import { SimpleRouter } from "@marianmeres/simple-router";
+ *
+ * const router = new SimpleRouter({
+ *   "/": () => console.log("Home"),
+ *   "/user/[id]": (params) => console.log("User:", params?.id),
+ *   "*": () => console.log("Not found")
+ * });
+ *
+ * router.exec("/user/123"); // Logs: "User: 123"
+ * ```
+ */
 export class SimpleRouter {
-	// console log debug on/off switch
+	/** Enable/disable console debug logging for route matching */
 	static debug = false;
 
-	protected _routes: [SimpleRoute, Function, boolean, string][] = [];
+	#routes: RouteEntry[] = [];
 
-	protected _catchAll: Function;
+	#catchAll: RouteCallback | null = null;
 
-	// current (last matched) route and params (in the shape { route: "...", params: {} } )
-	protected _current: { route: string; params: any; label: string } = {
+	#current: RouterCurrent = {
 		route: null,
 		params: null,
 		label: null,
 	};
 
-	// https://svelte.dev/docs#Store_contract
-	protected _subscriptions = new Set<Function>();
+	#pubsub: ReturnType<typeof createPubSub> = createPubSub();
 
-	constructor(config: { [route: string]: Function } = null) {
+	/**
+	 * Creates a new SimpleRouter instance.
+	 *
+	 * @param config - Optional configuration object mapping route patterns to callbacks
+	 *
+	 * @example
+	 * ```ts
+	 * const router = new SimpleRouter({
+	 *   "/": () => HomePage,
+	 *   "/about": () => AboutPage
+	 * });
+	 * ```
+	 */
+	constructor(config: RouterConfig | null = null) {
 		Object.entries(config || {}).forEach(([route, cb]) => {
 			this.on(route, cb);
 		});
 	}
 
-	protected _dbg(...a) {
-		SimpleRouter.debug && console.log('[SimpleRouter]', ...a);
+	#dbg(...a: unknown[]): void {
+		SimpleRouter.debug && console.log("[SimpleRouter]", ...a);
 	}
 
-	/** Will report map of registered routes and their labels. Intended for debugging. */
+	/**
+	 * Returns a map of registered route patterns to their labels.
+	 * Useful for debugging and introspection.
+	 *
+	 * @returns Object mapping route patterns to labels
+	 *
+	 * @example
+	 * ```ts
+	 * router.on("/users", () => {}, { label: "users-list" });
+	 * console.log(router.info()); // { "/users": "users-list" }
+	 * ```
+	 */
 	info(): Record<string, string> {
-		return this._routes.reduce((m, r) => {
-			m[r[0].route] = r[3];
+		return this.#routes.reduce((m, r) => {
+			m[r[0].route] = r[3] || "";
 			return m;
-		}, {});
+		}, {} as Record<string, string>);
 	}
 
-	reset() {
-		this._routes = [];
+	/**
+	 * Clears all registered routes (except catch-all).
+	 * Useful for testing or dynamic route reconfiguration.
+	 *
+	 * @returns The router instance for method chaining
+	 *
+	 * @example
+	 * ```ts
+	 * router.reset().on("/new-route", () => {});
+	 * ```
+	 */
+	reset(): this {
+		this.#routes = [];
 		return this;
 	}
 
-	get current() {
-		return this._current;
+	/**
+	 * Gets the current router state (last matched route and params).
+	 *
+	 * @returns Current router state
+	 *
+	 * @example
+	 * ```ts
+	 * router.exec("/user/123");
+	 * console.log(router.current); // { route: "/user/[id]", params: { id: "123" }, label: null }
+	 * ```
+	 */
+	get current(): RouterCurrent {
+		return this.#current;
 	}
 
+	/**
+	 * Registers one or more route patterns with a callback.
+	 * Routes are matched in the order they are registered (first match wins).
+	 * Use "*" as a catch-all route.
+	 *
+	 * @param routes - Single route pattern or array of patterns
+	 * @param cb - Callback function to execute when route matches
+	 * @param options - Optional configuration (label, allowQueryParams)
+	 *
+	 * @example
+	 * ```ts
+	 * // Single route
+	 * router.on("/users", () => UsersPage);
+	 *
+	 * // Multiple routes to same handler
+	 * router.on(["/", "/home", "/index.html"], () => HomePage);
+	 *
+	 * // With dynamic parameters
+	 * router.on("/user/[id]", (params) => UserPage(params?.id));
+	 *
+	 * // With regex constraint
+	 * router.on("/post/[id([0-9]+)]", (params) => PostPage(params?.id));
+	 *
+	 * // With label for debugging
+	 * router.on("/admin", () => AdminPage, { label: "admin-dashboard" });
+	 *
+	 * // Catch-all route
+	 * router.on("*", () => NotFoundPage);
+	 * ```
+	 */
 	on(
 		routes: string | string[],
-		cb: Function,
-		{ label = null, allowQueryParams = true } = {}
-	) {
+		cb: RouteCallback,
+		{ label = null, allowQueryParams = true }: RouterOnOptions = {}
+	): void {
 		if (!Array.isArray(routes)) routes = [routes];
 		routes.forEach((route) => {
-			if (route === '*') {
-				this._catchAll = cb;
+			if (route === "*") {
+				this.#catchAll = cb;
 			} else {
-				this._routes.push([new SimpleRoute(route), cb, allowQueryParams, label]);
+				this.#routes.push([
+					new SimpleRoute(route),
+					cb,
+					allowQueryParams,
+					label,
+				]);
 			}
 		});
 	}
 
-	exec(url: string, fallbackFn?: Function) {
+	/**
+	 * Executes route matching against the provided URL.
+	 * Returns the value returned by the matched route's callback.
+	 * Routes are tested in registration order - first match wins.
+	 *
+	 * @param url - URL path to match (with or without query string)
+	 * @param fallbackFn - Optional fallback function if no route matches
+	 * @returns The value returned by the matched callback, or false if no match
+	 *
+	 * @example
+	 * ```ts
+	 * // Basic matching
+	 * router.exec("/users"); // Returns result of callback
+	 *
+	 * // With query parameters
+	 * router.exec("/users?sort=name");
+	 *
+	 * // With fallback
+	 * router.exec("/unknown", () => console.log("Not found"));
+	 *
+	 * // Can return components, values, etc.
+	 * const component = router.exec("/home");
+	 * ```
+	 */
+	exec(url: string, fallbackFn?: RouteCallback): any {
 		const dbgPrefix = `'${url}' -> `;
 
-		const isFn = (v) => typeof v === 'function';
-		for (const [route, cb, allowQueryParams, label] of this._routes) {
+		for (const [route, cb, allowQueryParams, label] of this.#routes) {
 			// first match wins
 			// parse returns null or params object (which can be empty)
 			const params = route.parse(url, allowQueryParams);
-			if (params) {
-				this._publishCurrent(route.route, params, label);
-				this._dbg(`${dbgPrefix}matches '${route.route}' with`, params);
-				return isFn(cb) ? cb(params, route.route) : true;
+			if (params !== null) {
+				this.#publishCurrent(route.route, params, label);
+				this.#dbg(`${dbgPrefix}matches '${route.route}' with`, params);
+				return typeof cb === "function" ? cb(params, route.route) : true;
 			}
 		}
 
-		if (isFn(fallbackFn)) {
-			this._publishCurrent(null, null, null);
-			this._dbg(`${dbgPrefix}fallback...`);
-			return fallbackFn();
+		if (typeof fallbackFn === "function") {
+			this.#publishCurrent(null, null, null);
+			this.#dbg(`${dbgPrefix}fallback...`);
+			return fallbackFn(null, "");
 		}
 
-		if (isFn(this._catchAll)) {
-			this._publishCurrent('*', null, null);
-			this._dbg(`${dbgPrefix}catchall...`);
-			return this._catchAll(null, '*');
+		if (typeof this.#catchAll === "function") {
+			this.#publishCurrent("*", null, null);
+			this.#dbg(`${dbgPrefix}catchall...`);
+			return this.#catchAll(null, "*");
 		}
 
-		this._publishCurrent(null, null, null);
-		this._dbg(`${dbgPrefix}no match...`);
+		this.#publishCurrent(null, null, null);
+		this.#dbg(`${dbgPrefix}no match...`);
 		return false;
 	}
 
-	protected _publishCurrent(route, params, label) {
-		this._current = { route, params, label };
-		this._subscriptions.forEach((cb) => cb(this._current));
+	#publishCurrent(
+		route: string | null,
+		params: RouteParams | null,
+		label: string | null
+	): void {
+		this.#current = { route, params, label };
+		this.#pubsub.publish(PUBSUB_TOPIC, this.#current);
 	}
 
-	// https://svelte.dev/docs#Store_contract
-	subscribe(subscription: Function) {
-		if (typeof subscription !== 'function') {
-			throw new TypeError('Subscription is not a function');
+	/**
+	 * Subscribes to router state changes.
+	 * Follows the Svelte store contract - subscriber is called immediately with current state.
+	 * Compatible with RxJS Observables (returns object with `unsubscribe` method).
+	 *
+	 * @param subscription - Callback function that receives router state changes
+	 * @returns Subscription object with `unsubscribe()` method
+	 *
+	 * @example
+	 * ```ts
+	 * const { unsubscribe } = router.subscribe((state) => {
+	 *   console.log("Route changed:", state.route);
+	 *   console.log("Params:", state.params);
+	 * });
+	 *
+	 * // Later, to unsubscribe
+	 * unsubscribe();
+	 * ```
+	 *
+	 * @see https://svelte.dev/docs#Store_contract
+	 */
+	subscribe(subscription: RouterSubscriber): RouterSubscription {
+		if (typeof subscription !== "function") {
+			throw new TypeError("Subscription is not a function");
 		}
 
-		this._subscriptions.add(subscription);
-		subscription(this._current);
+		const unsubscribe = this.#pubsub.subscribe(PUBSUB_TOPIC, subscription);
+
+		// immediately call with current value (as per store contract)
+		subscription(this.#current);
 
 		// For interoperability with RxJS Observables, the .subscribe method is also
 		// allowed to return an object with an .unsubscribe method
 		return {
-			unsubscribe: () => this._subscriptions.delete(subscription),
+			unsubscribe,
 		};
 	}
 }

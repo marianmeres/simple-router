@@ -18,7 +18,7 @@ Can match any string identifiers - URLs, file paths, command names, or custom pa
 ## Installation
 
 ```shell
-deno add "jsr:@marianmeres/simple-router";
+deno add "jsr:@marianmeres/simple-router"
 ```
 
 ```shell

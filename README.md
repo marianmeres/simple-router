@@ -1,5 +1,8 @@
 # @marianmeres/simple-router
 
+[![NPM version](https://img.shields.io/npm/v/@marianmeres/simple-router)](https://www.npmjs.com/package/@marianmeres/simple-router)
+[![JSR version](https://jsr.io/badges/@marianmeres/simple-router)](https://jsr.io/@marianmeres/simple-router)
+
 A lightweight, framework-agnostic string pattern matcher and router with support for dynamic parameters, wildcards, query strings, and reactive subscriptions.
 
 Can match any string identifiers - URLs, file paths, command names, or custom patterns. Originally inspired by [Sapper-like regex routes](https://sapper.svelte.dev/docs#Regexes_in_routes). Primarily designed for client-side SPA routing, but flexible enough for any pattern matching needs.

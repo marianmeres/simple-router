@@ -345,12 +345,16 @@ dotRouter.exec("app.settings.profile");
 // Returns: "Settings: profile"
 ```
 
-## License
-
-MIT
 
 ## Links
 
 - [Tests](tests/) - Comprehensive test suite with 82+ tests
 - [GitHub Repository](https://github.com/marianmeres/simple-router)
 - [JSR Package](https://jsr.io/@marianmeres/simple-router)
+
+## Package Identity
+
+- **Name:** @marianmeres/simple-router
+- **Author:** Marian Meres
+- **Repository:** https://github.com/marianmeres/simple-router
+- **License:** MIT

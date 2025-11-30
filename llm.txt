@@ -1,0 +1,291 @@
+# @marianmeres/simple-router - LLM Knowledge Base
+
+## Package Overview
+
+- **Name:** @marianmeres/simple-router
+- **Version:** 2.2.1
+- **Author:** Marian Meres
+- **License:** MIT
+- **Repository:** https://github.com/marianmeres/simple-router
+- **JSR:** jsr:@marianmeres/simple-router
+- **NPM:** @marianmeres/simple-router
+
+Lightweight, framework-agnostic string pattern matcher and router with support for dynamic parameters, wildcards, query strings, and reactive subscriptions. Can match URLs, file paths, command names, or any custom string patterns.
+
+## File Structure
+
+```
+src/
+  mod.ts          # Main entry point, re-exports all public API
+  route.ts        # SimpleRoute class - low-level pattern parser
+  router.ts       # SimpleRouter class - high-level router with pub/sub
+tests/
+  route.test.ts   # 55+ tests for SimpleRoute pattern matching
+  router.test.ts  # 27+ tests for SimpleRouter functionality
+scripts/
+  build-npm.ts    # Deno-to-npm build script
+deno.json         # Deno configuration and dependencies
+```
+
+## Dependencies
+
+- **@marianmeres/pubsub** (jsr:@marianmeres/pubsub@^2.4.1) - For reactive subscriptions
+
+Dev dependencies:
+- **@std/assert** - Testing assertions
+- **@std/fs** - File system utilities (build script)
+- **@std/path** - Path utilities (build script)
+
+## Core Classes
+
+### SimpleRoute (route.ts)
+
+Low-level pattern parser. Parses route patterns and matches strings against them.
+
+**Constructor:**
+```ts
+new SimpleRoute(pattern: string)
+```
+
+**Static Properties:**
+- `SPLITTER = "/"` - Segment separator
+- `WILDCARD = "*"` - Catch-all symbol
+
+**Methods:**
+- `parse(url: string, allowQueryParams?: boolean): RouteParams | null`
+  - Returns extracted params object if match, null otherwise
+  - `allowQueryParams` defaults to true
+
+**Static Methods:**
+- `parseQueryString(str: string): RouteParams` - Parse query string to object
+
+**Internal Structure:**
+- `#parsed: RouteConfig[]` - Array of parsed segment configurations
+- Each RouteConfig: `{ segment, name, test: RegExp, isOptional, isSpread }`
+
+### SimpleRouter (router.ts)
+
+High-level router with route registration, execution, and pub/sub support.
+
+**Constructor:**
+```ts
+new SimpleRouter(config?: RouterConfig | null)
+```
+
+**Static Properties:**
+- `debug = false` - Enable console debug logging
+
+**Methods:**
+- `on(routes: string | string[], cb: RouteCallback, options?: RouterOnOptions): void`
+  - Register route(s) with callback
+  - Options: `{ label?: string, allowQueryParams?: boolean }`
+
+- `exec(url: string, fallbackFn?: RouteCallback): any`
+  - Execute matching, returns callback result or false
+  - First match wins (registration order matters)
+
+- `subscribe(subscription: RouterSubscriber): RouterSubscription`
+  - Svelte store contract compatible
+  - Called immediately with current state
+  - Returns `{ unsubscribe }`
+
+- `reset(): this` - Clear all routes (not catch-all), chainable
+- `info(): Record<string, string>` - Get route-to-label map
+
+**Properties:**
+- `current: RouterCurrent` - Current state `{ route, params, label }`
+
+**Internal Structure:**
+- `#routes: RouteEntry[]` - Array of `[SimpleRoute, RouteCallback, allowQueryParams, label]`
+- `#catchAll: RouteCallback | null` - Catch-all handler for "*"
+- `#current: RouterCurrent` - Current router state
+- `#pubsub` - Internal pub/sub instance from @marianmeres/pubsub
+
+## Pattern Syntax
+
+### Segment Types
+
+| Pattern | Description | Example |
+|---------|-------------|---------|
+| `exact` | Literal match | `foo` matches "foo" |
+| `[name]` | Named param | `[id]` captures any segment as `id` |
+| `[name(regex)]` | Regex constrained | `[id([0-9]+)]` captures digits only |
+| `[name]?` | Optional segment | `[id]?` matches with or without |
+| `[...name]` | Spread (multi-segment) | `[...path]` captures remaining path |
+| `*` | Wildcard (catch-all) | Must be last segment |
+
+### Key Behaviors
+
+1. **Separator Normalization:** Multiple separators normalized to single, trimmed from ends
+2. **First Match Wins:** Routes matched in registration order
+3. **Query String Parsing:** Enabled by default, can disable per-route
+4. **Path Params Priority:** Path params override query params with same name
+5. **URL Decoding:** Both param names and values are URL-decoded
+
+### Pattern Constraints
+
+- Spread segments cannot be optional (`[...path]?` throws)
+- Only one spread segment allowed per route
+- Wildcard `*` must be last segment
+- Regex in `[name(regex)]` must be valid
+
+## Type Definitions
+
+```ts
+type RouteParams = Record<string, any>;
+
+type RouteCallback = (params: RouteParams | null, route: string) => any;
+
+interface RouterCurrent {
+  route: string | null;    // Matched pattern, "*" for catch-all, null if none
+  params: RouteParams | null;
+  label: string | null;
+}
+
+interface RouterOnOptions {
+  label?: string | null;
+  allowQueryParams?: boolean;  // default: true
+}
+
+type RouterConfig = Record<string, RouteCallback>;
+
+interface RouterSubscription {
+  unsubscribe: () => void;
+}
+
+type RouterSubscriber = (current: RouterCurrent) => void;
+
+// Internal (exported for advanced use)
+interface RouteConfig {
+  segment: string;
+  name: string | null;
+  test: RegExp;
+  isOptional: boolean;
+  isSpread: boolean;
+}
+```
+
+## Usage Patterns
+
+### URL Routing (Primary Use Case)
+```ts
+const router = new SimpleRouter({
+  "/": () => HomePage,
+  "/user/[id]": (params) => UserPage(params?.id),
+  "*": () => NotFoundPage
+});
+router.exec("/user/123");
+```
+
+### File Path Matching
+```ts
+const fileRouter = new SimpleRouter({
+  "src/[module]/[file].ts": ({ module, file }) => process(module, file),
+  "assets/images/[...path]": ({ path }) => loadImage(path)
+});
+```
+
+### Command Routing
+```ts
+const cmdRouter = new SimpleRouter({
+  "user:create": () => createUser(),
+  "user:delete:[id([0-9]+)]": ({ id }) => deleteUser(id)
+});
+```
+
+### Reactive Subscriptions (Svelte Compatible)
+```ts
+const { unsubscribe } = router.subscribe((state) => {
+  console.log(state.route, state.params, state.label);
+});
+```
+
+### Hash Routing
+```ts
+window.addEventListener("hashchange", () => {
+  const path = location.hash.slice(1) || "/";
+  router.exec(path);
+});
+```
+
+## Build System
+
+### Deno Tasks
+- `deno task test` - Run tests with watch mode
+- `deno task npm:build` - Build npm package to `.npm-dist/`
+- `deno task npm:publish` - Build and publish to npm
+
+### NPM Build Process (scripts/build-npm.ts)
+1. Copy src/ to .npm-dist/src/
+2. Copy LICENSE and README.md
+3. Generate tsconfig.json (ESNext, module bundler resolution)
+4. Replace .ts imports with .js
+5. Run npm install and tsc
+6. Cleanup temp files
+
+### Output Structure (.npm-dist/)
+```
+package.json
+LICENSE
+README.md
+dist/
+  mod.js + mod.d.ts
+  route.js + route.d.ts
+  router.js + router.d.ts
+```
+
+## Test Coverage Summary
+
+### route.test.ts (55+ test cases)
+- Basic matching: exact, params, regex constraints
+- Optional params: with/without values
+- Spread params: various positions
+- Wildcards: end position, with params
+- Query string: parsing, encoding, disable option
+- Error cases: invalid spread, multiple spread, wildcard position
+
+### router.test.ts (27+ test cases)
+- Basic routing: index, params, fallback
+- First match wins behavior
+- Catch-all "*" route
+- Return values from callbacks
+- Subscribe/unsubscribe lifecycle
+- Labels and info()
+- Reset functionality
+- Edge cases: duplicate routes, empty config, multiple subscribers
+
+## Important Implementation Details
+
+1. **Route Storage:** Routes stored as tuples `[SimpleRoute, callback, allowQueryParams, label]`
+
+2. **Catch-all Handling:** "*" stored separately in `#catchAll`, not in `#routes` array
+
+3. **Match Algorithm:**
+   - Iterate `#routes` in order
+   - Call `route.parse(url, allowQueryParams)`
+   - First non-null result wins
+   - If no match: try fallbackFn, then catch-all, then return false
+
+4. **Subscription Model:**
+   - Uses `@marianmeres/pubsub` internally
+   - Single topic "current"
+   - Immediately calls subscriber with current state (Svelte store contract)
+
+5. **Spread Parameter Resolution:**
+   - Groups input segments to match spread definition
+   - Works with segments before/after spread
+   - Rejoins matched segments with separator
+
+6. **Regex Escaping:** Pattern literals escaped for safe RegExp construction
+
+## Common Gotchas
+
+1. **Route Order Matters:** `/user/[id]` before `/user/admin` means `/user/admin` is captured by the generic route
+
+2. **Query Params in Path Params:** When `allowQueryParams=false`, query string becomes part of last param value
+
+3. **Empty Routes:** Both `/` and empty string match root route
+
+4. **Spread Limitations:** Only one spread per route, cannot be optional
+
+5. **Callback Return Values:** `exec()` returns exactly what callback returns (including false/0/null/undefined)

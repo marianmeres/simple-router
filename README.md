@@ -103,6 +103,8 @@ The default separator is `/`. Multiple separators are normalized to single, and 
 
 ## API Reference
 
+For the complete API documentation with all methods, types, and detailed examples, see [API.md](API.md).
+
 ### SimpleRouter
 
 #### Constructor
@@ -349,15 +351,4 @@ dotRouter.exec("app.settings.profile");
 ```
 
 
-## Links
 
-- [Tests](tests/) - Comprehensive test suite with 82+ tests
-- [GitHub Repository](https://github.com/marianmeres/simple-router)
-- [JSR Package](https://jsr.io/@marianmeres/simple-router)
-
-## Package Identity
-
-- **Name:** @marianmeres/simple-router
-- **Author:** Marian Meres
-- **Repository:** https://github.com/marianmeres/simple-router
-- **License:** MIT

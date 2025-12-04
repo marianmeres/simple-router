@@ -16,11 +16,17 @@ export interface RouteConfig {
 export type RouteParams = Record<string, any>;
 
 export class SimpleRoute {
-	/** Separator used to split URL paths into segments */
-	static SPLITTER = "/";
+	/**
+	 * Separator used to split paths into segments.
+	 * @default "/"
+	 */
+	static SPLITTER: string = "/";
 
-	/** Wildcard symbol for catch-all routes */
-	static WILDCARD = "*";
+	/**
+	 * Wildcard symbol for catch-all routes. Must be used as the last segment.
+	 * @default "*"
+	 */
+	static WILDCARD: string = "*";
 
 	#parsed: RouteConfig[];
 

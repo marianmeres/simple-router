@@ -119,8 +119,12 @@ const PUBSUB_TOPIC = "current";
  * ```
  */
 export class SimpleRouter {
-	/** Enable/disable console debug logging for route matching */
-	static debug = false;
+	/**
+	 * Enable/disable console debug logging for route matching.
+	 * When enabled, logs route matching details to the console.
+	 * @default false
+	 */
+	static debug: boolean = false;
 
 	#routes: RouteEntry[] = [];
 
@@ -240,8 +244,9 @@ export class SimpleRouter {
 	on(
 		routes: string | string[],
 		cb: RouteCallback,
-		{ label = null, allowQueryParams = true }: RouterOnOptions = {}
+		options: RouterOnOptions = {}
 	): void {
+		const { label = null, allowQueryParams = true } = options;
 		if (!Array.isArray(routes)) routes = [routes];
 		routes.forEach((route) => {
 			if (route === "*") {
@@ -287,8 +292,7 @@ export class SimpleRouter {
 	 * const component = router.exec("/home");
 	 * ```
 	 */
-	// deno-lint-ignore no-explicit-any
-	exec(url: string, fallbackFn?: RouteCallback): any {
+	exec(url: string, fallbackFn?: RouteCallback): unknown {
 		const dbgPrefix = `'${url}' -> `;
 
 		for (const [route, cb, allowQueryParams, label] of this.#routes) {

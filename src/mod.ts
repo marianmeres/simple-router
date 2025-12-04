@@ -7,10 +7,12 @@ export type { RouteConfig, RouteParams } from "./route.ts";
 
 // Type exports from router.ts
 export type {
+	Logger,
 	RouteCallback,
 	RouterConfig,
 	RouterCurrent,
 	RouterOnOptions,
+	RouterOptions,
 	RouterSubscriber,
-	RouterSubscription,
+	RouterUnsubscribe,
 } from "./router.ts";

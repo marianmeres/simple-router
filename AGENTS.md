@@ -38,7 +38,7 @@ key_features:
 source_files:
   - path: "src/mod.ts"
     purpose: "Main entry point, re-exports public API"
-    exports: ["SimpleRoute", "SimpleRouter", "RouteConfig", "RouteParams", "RouteCallback", "RouterConfig", "RouterCurrent", "RouterOnOptions", "RouterSubscriber", "RouterSubscription"]
+    exports: ["SimpleRoute", "SimpleRouter", "RouteConfig", "RouteParams", "Logger", "RouteCallback", "RouterConfig", "RouterCurrent", "RouterOnOptions", "RouterOptions", "RouterSubscriber", "RouterUnsubscribe"]
 
   - path: "src/route.ts"
     purpose: "Low-level pattern parser"
@@ -47,7 +47,7 @@ source_files:
 
   - path: "src/router.ts"
     purpose: "High-level router with pub/sub"
-    exports: ["SimpleRouter", "RouteParams", "RouteCallback", "RouterConfig", "RouterCurrent", "RouterOnOptions", "RouterSubscriber", "RouterSubscription"]
+    exports: ["SimpleRouter", "RouteParams", "Logger", "RouteCallback", "RouterConfig", "RouterCurrent", "RouterOnOptions", "RouterOptions", "RouterSubscriber", "RouterUnsubscribe"]
     class: "SimpleRouter"
 
 test_files:
@@ -56,8 +56,8 @@ test_files:
     coverage: "Pattern matching, query params, errors"
 
   - path: "tests/router.test.ts"
-    test_count: 19
-    coverage: "Router lifecycle, subscriptions, edge cases"
+    test_count: 24
+    coverage: "Router lifecycle, subscriptions, logger, edge cases"
 
 build_files:
   - path: "scripts/build-npm.ts"
@@ -91,13 +91,14 @@ static_properties:
   - name: "debug"
     type: "boolean"
     default: false
-    description: "Enable console debug logging"
+    description: "Enable debug logging (uses logger if provided, else console.log)"
 
 constructor:
   params:
     - name: "config"
-      type: "RouterConfig | null"
+      type: "RouterConfig | RouterOptions | null"
       optional: true
+      description: "Route config or options object with routes and logger"
 
 methods:
   - name: "on"
@@ -111,9 +112,10 @@ methods:
     returns: "Callback result, or false if no match"
 
   - name: "subscribe"
-    signature: "(subscription: RouterSubscriber) => RouterSubscription"
+    signature: "(subscription: RouterSubscriber) => RouterUnsubscribe"
     description: "Subscribe to state changes (Svelte store compatible)"
     behavior: "Called immediately with current state"
+    returns: "Unsubscribe function directly (not wrapped object)"
 
   - name: "reset"
     signature: "() => this"
@@ -210,6 +212,18 @@ type RouteCallback = (params: RouteParams | null, route: string) => any;
 
 type RouterConfig = Record<string, RouteCallback>;
 
+interface Logger {
+  debug: (...args: unknown[]) => unknown;
+  log: (...args: unknown[]) => unknown;
+  warn: (...args: unknown[]) => unknown;
+  error: (...args: unknown[]) => unknown;
+}
+
+interface RouterOptions {
+  routes?: RouterConfig | null;
+  logger?: Logger | null;
+}
+
 interface RouterCurrent {
   route: string | null;
   params: RouteParams | null;
@@ -223,9 +237,7 @@ interface RouterOnOptions {
 
 type RouterSubscriber = (current: RouterCurrent) => void;
 
-interface RouterSubscription {
-  unsubscribe: () => void;
-}
+type RouterUnsubscribe = () => void;
 
 interface RouteConfig {
   segment: string;
@@ -327,9 +339,11 @@ commands:
 ```yaml
 guidelines:
   - "Maintain Svelte store contract compatibility for subscribe()"
+  - "subscribe() returns unsubscribe function directly (not wrapped object)"
   - "First-match-wins is core behavior - do not change"
   - "Query param parsing must remain toggleable per-route"
   - "Keep catch-all ('*') handling separate from regular routes"
   - "URL encoding/decoding must be handled for params"
-  - "Tests cover 82 cases - run before any changes"
+  - "Logger interface must remain compatible with @marianmeres/clog"
+  - "Tests cover 87 cases - run before any changes"
 ```

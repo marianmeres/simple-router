@@ -110,10 +110,23 @@ For the complete API documentation with all methods, types, and detailed example
 #### Constructor
 
 ```ts
-const router = new SimpleRouter(config?);
+// Simple config (backwards compatible)
+const router = new SimpleRouter({
+	"/": () => HomePage,
+	"/about": () => AboutPage
+});
+
+// With options object (for logger support)
+const router = new SimpleRouter({
+	routes: {
+		"/": () => HomePage,
+		"/about": () => AboutPage
+	},
+	logger: myLogger // optional, compatible with @marianmeres/clog
+});
 ```
 
-- `config` - Optional object mapping route patterns to callbacks
+- `config` - Either a `RouterConfig` object mapping route patterns to callbacks, or a `RouterOptions` object with `routes` and `logger` properties
 
 #### Methods
 
@@ -167,7 +180,7 @@ Returns the value returned by the matched callback, or `false` if no match.
 Subscribe to router state changes. Follows the [Svelte store contract](https://svelte.dev/docs#Store_contract).
 
 ```ts
-const { unsubscribe } = router.subscribe((state) => {
+const unsubscribe = router.subscribe((state) => {
 	console.log("Route:", state.route);
 	console.log("Params:", state.params);
 	console.log("Label:", state.label);
@@ -177,7 +190,7 @@ const { unsubscribe } = router.subscribe((state) => {
 unsubscribe();
 ```
 
-The callback is called immediately with the current state, then on every route change.
+Returns an unsubscribe function directly. The callback is called immediately with the current state, then on every route change.
 
 ##### `reset()`
 
@@ -210,11 +223,11 @@ console.log(router.current);
 
 ##### `static debug`
 
-Enable/disable debug logging.
+Enable/disable debug logging. When enabled, uses the logger instance (if provided) or falls back to `console.log`.
 
 ```ts
 SimpleRouter.debug = true;
-router.exec("/test"); // Logs matching details to console
+router.exec("/test"); // Logs matching details to console (or custom logger)
 ```
 
 ### SimpleRoute
@@ -246,13 +259,15 @@ Full TypeScript support with exported types:
 
 ```ts
 import type {
+	Logger,
 	RouteParams,
 	RouteCallback,
 	RouterConfig,
 	RouterCurrent,
 	RouterOnOptions,
+	RouterOptions,
 	RouterSubscriber,
-	RouterSubscription,
+	RouterUnsubscribe,
 } from "@marianmeres/simple-router";
 ```
 

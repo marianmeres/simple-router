@@ -69,13 +69,35 @@ export interface RouterOnOptions {
 export type RouterConfig = Record<string, RouteCallback>;
 
 /**
- * Subscription object returned by the `subscribe()` method.
- * Follows the Svelte store contract and RxJS Observable interface.
+ * Logger interface compatible with `@marianmeres/clog`.
+ * Provides console-compatible logging methods.
  */
-export interface RouterSubscription {
-	/** Unsubscribe from router state changes */
-	unsubscribe: () => void;
+export interface Logger {
+	/** Log debug level messages */
+	debug: (...args: unknown[]) => unknown;
+	/** Log info level messages */
+	log: (...args: unknown[]) => unknown;
+	/** Log warning level messages */
+	warn: (...args: unknown[]) => unknown;
+	/** Log error level messages */
+	error: (...args: unknown[]) => unknown;
 }
+
+/**
+ * Options for the SimpleRouter factory/constructor.
+ */
+export interface RouterOptions {
+	/** Route configuration mapping patterns to callbacks */
+	routes?: RouterConfig | null;
+	/** Optional logger instance for debug output (compatible with @marianmeres/clog) */
+	logger?: Logger | null;
+}
+
+/**
+ * Unsubscribe function returned by the `subscribe()` method.
+ * Follows the Svelte store contract.
+ */
+export type RouterUnsubscribe = () => void;
 
 /**
  * Subscriber callback function that receives router state changes.
@@ -138,27 +160,60 @@ export class SimpleRouter {
 
 	#pubsub: ReturnType<typeof createPubSub> = createPubSub();
 
+	#logger: Logger | null = null;
+
 	/**
 	 * Creates a new SimpleRouter instance.
 	 *
-	 * @param config - Optional configuration object mapping route patterns to callbacks
+	 * @param config - Optional configuration: either a RouterConfig object mapping route patterns
+	 *                 to callbacks, or a RouterOptions object with routes and logger
 	 *
 	 * @example
 	 * ```ts
+	 * // Simple config (backwards compatible)
 	 * const router = new SimpleRouter({
 	 *   "/": () => HomePage,
 	 *   "/about": () => AboutPage
 	 * });
+	 *
+	 * // With options object
+	 * const router = new SimpleRouter({
+	 *   routes: {
+	 *     "/": () => HomePage,
+	 *     "/about": () => AboutPage
+	 *   },
+	 *   logger: myLogger // optional, compatible with @marianmeres/clog
+	 * });
 	 * ```
 	 */
-	constructor(config: RouterConfig | null = null) {
-		Object.entries(config || {}).forEach(([route, cb]) => {
+	constructor(config: RouterConfig | RouterOptions | null = null) {
+		let routes: RouterConfig | null = null;
+
+		if (config) {
+			// Check if config is RouterOptions (has 'routes' or 'logger' key)
+			if ("routes" in config || "logger" in config) {
+				const options = config as RouterOptions;
+				routes = options.routes ?? null;
+				this.#logger = options.logger ?? null;
+			} else {
+				// Backwards compatible: treat as RouterConfig
+				routes = config as RouterConfig;
+			}
+		}
+
+		Object.entries(routes || {}).forEach(([route, cb]) => {
 			this.on(route, cb);
 		});
 	}
 
 	#dbg(...a: unknown[]): void {
-		SimpleRouter.debug && console.log("[SimpleRouter]", ...a);
+		if (SimpleRouter.debug) {
+			if (this.#logger) {
+				this.#logger.log("[SimpleRouter]", ...a);
+			} else {
+				console.log("[SimpleRouter]", ...a);
+			}
+		}
 	}
 
 	/**
@@ -335,14 +390,13 @@ export class SimpleRouter {
 	/**
 	 * Subscribes to router state changes.
 	 * Follows the Svelte store contract - subscriber is called immediately with current state.
-	 * Compatible with RxJS Observables (returns object with `unsubscribe` method).
 	 *
 	 * @param subscription - Callback function that receives router state changes
-	 * @returns Subscription object with `unsubscribe()` method
+	 * @returns Unsubscribe function
 	 *
 	 * @example
 	 * ```ts
-	 * const { unsubscribe } = router.subscribe((state) => {
+	 * const unsubscribe = router.subscribe((state) => {
 	 *   console.log("Route changed:", state.route);
 	 *   console.log("Params:", state.params);
 	 * });
@@ -353,7 +407,7 @@ export class SimpleRouter {
 	 *
 	 * @see https://svelte.dev/docs#Store_contract
 	 */
-	subscribe(subscription: RouterSubscriber): RouterSubscription {
+	subscribe(subscription: RouterSubscriber): RouterUnsubscribe {
 		if (typeof subscription !== "function") {
 			throw new TypeError("Subscription is not a function");
 		}
@@ -363,10 +417,6 @@ export class SimpleRouter {
 		// immediately call with current value (as per store contract)
 		subscription(this.#current);
 
-		// For interoperability with RxJS Observables, the .subscribe method is also
-		// allowed to return an object with an .unsubscribe method
-		return {
-			unsubscribe,
-		};
+		return unsubscribe;
 	}
 }

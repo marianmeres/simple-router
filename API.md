@@ -26,7 +26,7 @@ The main router class for registering routes, executing pattern matching, and su
 ### Constructor
 
 ```ts
-new SimpleRouter(config?: RouterConfig | null)
+new SimpleRouter(config?: RouterConfig | RouterOptions | null)
 ```
 
 Creates a new router instance.
@@ -35,7 +35,7 @@ Creates a new router instance.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `config` | `RouterConfig \| null` | Optional object mapping route patterns to callback functions |
+| `config` | `RouterConfig \| RouterOptions \| null` | Optional route configuration or options object |
 
 **Example:**
 
@@ -43,11 +43,20 @@ Creates a new router instance.
 // Empty router
 const router = new SimpleRouter();
 
-// With initial routes
+// Simple config (backwards compatible)
 const router = new SimpleRouter({
   "/": () => HomePage,
   "/about": () => AboutPage,
   "*": () => NotFoundPage
+});
+
+// With options object (for logger support)
+const router = new SimpleRouter({
+  routes: {
+    "/": () => HomePage,
+    "/about": () => AboutPage
+  },
+  logger: myLogger // optional, compatible with @marianmeres/clog
 });
 ```
 
@@ -59,7 +68,7 @@ const router = new SimpleRouter({
 static debug: boolean = false
 ```
 
-Enable/disable console debug logging for route matching. When enabled, logs detailed matching information to the console.
+Enable/disable console debug logging for route matching. When enabled, logs detailed matching information using the logger instance (if provided) or falls back to `console.log`.
 
 **Example:**
 
@@ -190,7 +199,7 @@ render(component);
 #### `subscribe()`
 
 ```ts
-subscribe(subscription: RouterSubscriber): RouterSubscription
+subscribe(subscription: RouterSubscriber): RouterUnsubscribe
 ```
 
 Subscribes to router state changes. Follows the [Svelte store contract](https://svelte.dev/docs#Store_contract).
@@ -201,17 +210,16 @@ Subscribes to router state changes. Follows the [Svelte store contract](https://
 |------|------|-------------|
 | `subscription` | `RouterSubscriber` | Callback function receiving state changes |
 
-**Returns:** `RouterSubscription` - Object with `unsubscribe()` method
+**Returns:** `RouterUnsubscribe` - Unsubscribe function
 
 **Behavior:**
 - Subscriber is called immediately with current state
 - Subsequently called on every `exec()` call
-- Compatible with RxJS Observable interface
 
 **Example:**
 
 ```ts
-const { unsubscribe } = router.subscribe((state) => {
+const unsubscribe = router.subscribe((state) => {
   console.log("Route:", state.route);
   console.log("Params:", state.params);
   console.log("Label:", state.label);
@@ -436,6 +444,30 @@ interface RouterOnOptions {
 
 Options for the `on()` method.
 
+### Logger
+
+```ts
+interface Logger {
+  debug: (...args: unknown[]) => unknown;
+  log: (...args: unknown[]) => unknown;
+  warn: (...args: unknown[]) => unknown;
+  error: (...args: unknown[]) => unknown;
+}
+```
+
+Logger interface compatible with `@marianmeres/clog`. Provides console-compatible logging methods.
+
+### RouterOptions
+
+```ts
+interface RouterOptions {
+  routes?: RouterConfig | null;  // Route configuration
+  logger?: Logger | null;        // Optional logger instance
+}
+```
+
+Options object for the constructor (alternative to plain `RouterConfig`).
+
 ### RouterSubscriber
 
 ```ts
@@ -444,15 +476,13 @@ type RouterSubscriber = (current: RouterCurrent) => void;
 
 Callback function for route subscriptions.
 
-### RouterSubscription
+### RouterUnsubscribe
 
 ```ts
-interface RouterSubscription {
-  unsubscribe: () => void;
-}
+type RouterUnsubscribe = () => void;
 ```
 
-Subscription object returned by `subscribe()`.
+Unsubscribe function returned by `subscribe()`.
 
 ### RouteConfig (Internal)
 

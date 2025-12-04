@@ -144,7 +144,7 @@ Deno.test("unsubscribe works", () => {
 		"/": () => true,
 	});
 
-	const { unsubscribe } = router.subscribe((v) => log.push(v.route));
+	const unsubscribe = router.subscribe((v) => log.push(v.route));
 
 	router.exec("/");
 	const logged = log.join();
@@ -233,9 +233,9 @@ Deno.test("Edge case: multiple subscribers", () => {
 	router.on("/test", () => true);
 
 	// Subscribe multiple times
-	const _sub1 = router.subscribe((v) => log1.push(v.route));
-	const sub2 = router.subscribe((v) => log2.push(v.route));
-	const _sub3 = router.subscribe((v) => log3.push(v.route));
+	const _unsub1 = router.subscribe((v) => log1.push(v.route));
+	const unsub2 = router.subscribe((v) => log2.push(v.route));
+	const _unsub3 = router.subscribe((v) => log3.push(v.route));
 
 	router.exec("/test");
 
@@ -245,7 +245,7 @@ Deno.test("Edge case: multiple subscribers", () => {
 	assertEquals(log3.join(), ",/test");
 
 	// Unsubscribe one
-	sub2.unsubscribe();
+	unsub2();
 
 	router.exec("/test");
 
@@ -308,7 +308,10 @@ Deno.test("Edge case: query params with special characters", () => {
 		"/search": (params) => params,
 	});
 
-	const result = router.exec("/search?q=hello+world&type=exact%20match");
+	const result = router.exec("/search?q=hello+world&type=exact%20match") as Record<
+		string,
+		string
+	>;
 
 	assertEquals(result?.q, "hello+world");
 	assertEquals(result?.type, "exact match");
@@ -320,9 +323,92 @@ Deno.test("Edge case: allowQueryParams false per route", () => {
 	router.on("/with-query", (params) => params, { allowQueryParams: true });
 	router.on("/without-query", (params) => params, { allowQueryParams: false });
 
-	const withQuery = router.exec("/with-query?foo=bar");
-	const withoutQuery = router.exec("/without-query?foo=bar");
+	const withQuery = router.exec("/with-query?foo=bar") as Record<string, string>;
+	const withoutQuery = router.exec("/without-query?foo=bar") as Record<string, string>;
 
 	assertEquals(withQuery?.foo, "bar");
 	assertEquals(withoutQuery?.foo, undefined);
+});
+
+Deno.test("RouterOptions: routes option works", () => {
+	const log: string[] = [];
+	const router = new SimpleRouter({
+		routes: {
+			"/": () => log.push("index"),
+			"/about": () => log.push("about"),
+		},
+	});
+
+	router.exec("/");
+	router.exec("/about");
+
+	assertEquals(log.join(), "index,about");
+});
+
+Deno.test("RouterOptions: logger option works", () => {
+	const logOutput: string[] = [];
+	const mockLogger = {
+		debug: (...args: unknown[]) => logOutput.push(`debug: ${args.join(" ")}`),
+		log: (...args: unknown[]) => logOutput.push(`log: ${args.join(" ")}`),
+		warn: (...args: unknown[]) => logOutput.push(`warn: ${args.join(" ")}`),
+		error: (...args: unknown[]) => logOutput.push(`error: ${args.join(" ")}`),
+	};
+
+	const router = new SimpleRouter({
+		routes: {
+			"/": () => "index",
+		},
+		logger: mockLogger,
+	});
+
+	// Enable debug mode
+	SimpleRouter.debug = true;
+
+	router.exec("/");
+	router.exec("/not-found");
+
+	// Disable debug mode
+	SimpleRouter.debug = false;
+
+	// Logger should have been called
+	assertEquals(logOutput.length, 2);
+	assertEquals(logOutput[0].includes("[SimpleRouter]"), true);
+	assertEquals(logOutput[0].includes("matches"), true);
+	assertEquals(logOutput[1].includes("[SimpleRouter]"), true);
+	assertEquals(logOutput[1].includes("no match"), true);
+});
+
+Deno.test("RouterOptions: logger fallback to console.log when not provided", () => {
+	// This test verifies that the router works without a logger (uses console.log)
+	const router = new SimpleRouter({
+		routes: {
+			"/": () => "index",
+		},
+	});
+
+	// Should not throw when debug is enabled and no logger provided
+	SimpleRouter.debug = true;
+	router.exec("/");
+	SimpleRouter.debug = false;
+});
+
+Deno.test("RouterOptions: empty options object", () => {
+	const router = new SimpleRouter({
+		routes: null,
+		logger: null,
+	});
+
+	assertEquals(router.current.route, null);
+	assertEquals(router.exec("/test"), false);
+});
+
+Deno.test("subscribe returns function directly (not wrapped object)", () => {
+	const router = new SimpleRouter({
+		"/": () => true,
+	});
+
+	const result = router.subscribe(() => {});
+
+	// Should be a function, not an object
+	assertEquals(typeof result, "function");
 });

@@ -23,27 +23,42 @@ Full API documentation for `@marianmeres/simple-router`.
 
 The main router class for registering routes, executing pattern matching, and subscribing to state changes.
 
+`SimpleRouter` is generic over `T`, the return type of route callbacks. This allows for type-safe `exec()` return values.
+
 ### Constructor
 
 ```ts
-new SimpleRouter(config?: RouterConfig | RouterOptions | null)
+new SimpleRouter<T = unknown>(config?: RouterConfig<T> | RouterOptions<T> | null)
 ```
 
 Creates a new router instance.
+
+**Type Parameters:**
+
+| Name | Default | Description |
+|------|---------|-------------|
+| `T` | `unknown` | The return type of route callbacks |
 
 **Parameters:**
 
 | Name | Type | Description |
 |------|------|-------------|
-| `config` | `RouterConfig \| RouterOptions \| null` | Optional route configuration or options object |
+| `config` | `RouterConfig<T> \| RouterOptions<T> \| null` | Optional route configuration or options object |
 
 **Example:**
 
 ```ts
-// Empty router
+// Empty router (T defaults to unknown)
 const router = new SimpleRouter();
 
-// Simple config (backwards compatible)
+// Typed router - all callbacks must return Component
+const router = new SimpleRouter<Component>({
+  "/": () => HomePage,
+  "/about": () => AboutPage,
+  "*": () => NotFoundPage
+});
+
+// Simple config without explicit type (T inferred from callbacks)
 const router = new SimpleRouter({
   "/": () => HomePage,
   "/about": () => AboutPage,
@@ -51,7 +66,7 @@ const router = new SimpleRouter({
 });
 
 // With options object (for logger support)
-const router = new SimpleRouter({
+const router = new SimpleRouter<Component>({
   routes: {
     "/": () => HomePage,
     "/about": () => AboutPage
@@ -102,7 +117,7 @@ console.log(router.current);
 #### `on()`
 
 ```ts
-on(routes: string | string[], cb: RouteCallback, options?: RouterOnOptions): void
+on(routes: string | string[], cb: RouteCallback<T>, options?: RouterOnOptions): void
 ```
 
 Registers one or more route patterns with a callback function.
@@ -112,7 +127,7 @@ Registers one or more route patterns with a callback function.
 | Name | Type | Description |
 |------|------|-------------|
 | `routes` | `string \| string[]` | Single route pattern or array of patterns |
-| `cb` | `RouteCallback` | Callback function executed when route matches |
+| `cb` | `RouteCallback<T>` | Callback function executed when route matches (must return `T`) |
 | `options` | `RouterOnOptions` | Optional configuration object |
 
 **Options:**
@@ -154,7 +169,7 @@ router.on("*", () => NotFoundPage);
 #### `exec()`
 
 ```ts
-exec(url: string, fallbackFn?: RouteCallback): unknown
+exec(url: string, fallbackFn?: RouteCallback<T>): T | false
 ```
 
 Executes pattern matching against the provided string.
@@ -164,9 +179,9 @@ Executes pattern matching against the provided string.
 | Name | Type | Description |
 |------|------|-------------|
 | `url` | `string` | String to match against registered patterns |
-| `fallbackFn` | `RouteCallback` | Optional fallback function if no route matches |
+| `fallbackFn` | `RouteCallback<T>` | Optional fallback function if no route matches |
 
-**Returns:** The value returned by the matched callback, or `false` if no match and no catch-all/fallback.
+**Returns:** `T | false` - The value returned by the matched callback (type `T`), or `false` if no match and no catch-all/fallback.
 
 **Match Priority:**
 1. First registered matching route
@@ -401,25 +416,33 @@ type RouteParams = Record<string, any>;
 
 Object containing extracted route parameters. Keys are parameter names, values are the extracted string values.
 
-### RouteCallback
+### RouteCallback\<T\>
 
 ```ts
-type RouteCallback = (params: RouteParams | null, route: string) => any;
+type RouteCallback<T = unknown> = (params: RouteParams | null, route: string) => T;
 ```
 
 Callback function executed when a route matches.
+
+**Type Parameters:**
+- `T` - The return type of the callback (default: `unknown`)
 
 **Parameters:**
 - `params` - Extracted route parameters (or `null` if no params)
 - `route` - The matched route pattern string
 
-### RouterConfig
+**Returns:** `T` - The value to be returned by `exec()`
+
+### RouterConfig\<T\>
 
 ```ts
-type RouterConfig = Record<string, RouteCallback>;
+type RouterConfig<T = unknown> = Record<string, RouteCallback<T>>;
 ```
 
 Configuration object mapping route patterns to callbacks.
+
+**Type Parameters:**
+- `T` - The return type of all route callbacks (default: `unknown`)
 
 ### RouterCurrent
 
@@ -457,16 +480,19 @@ interface Logger {
 
 Logger interface compatible with `@marianmeres/clog`. Provides console-compatible logging methods.
 
-### RouterOptions
+### RouterOptions\<T\>
 
 ```ts
-interface RouterOptions {
-  routes?: RouterConfig | null;  // Route configuration
-  logger?: Logger | null;        // Optional logger instance
+interface RouterOptions<T = unknown> {
+  routes?: RouterConfig<T> | null;  // Route configuration
+  logger?: Logger | null;           // Optional logger instance
 }
 ```
 
 Options object for the constructor (alternative to plain `RouterConfig`).
+
+**Type Parameters:**
+- `T` - The return type of route callbacks (default: `unknown`)
 
 ### RouterSubscriber
 

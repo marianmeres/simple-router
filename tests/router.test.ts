@@ -106,7 +106,7 @@ Deno.test("integration", () => {
 	const log2: Array<string | null> = [];
 
 	// routes can be configured via ctor config
-	const router = new SimpleRouter({
+	const router = new SimpleRouter<number>({
 		"/": () => log.push("index"),
 		"*": () => log.push("404"),
 	});
@@ -116,7 +116,8 @@ Deno.test("integration", () => {
 	// or via "on" api
 	const route = "/[bar]/[id([\\d]+)]/baz";
 	router.on(route, (params) => {
-		if (params) log.push(`${params.bar}:${params.id}`);
+		if (params) return log.push(`${params.bar}:${params.id}`);
+		return 0;
 	});
 
 	router.exec("hey", () => log.push("ho")); // custom fallback

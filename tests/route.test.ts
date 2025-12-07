@@ -4,11 +4,6 @@ import { assertEquals, assertThrows } from "@std/assert";
 const rpad = (s: string, len = 25) =>
 	(s += " ".repeat(Math.max(0, len - s.length)));
 
-// Helper to check deep equality
-const isEqual = (a: any, b: any): boolean => {
-	return JSON.stringify(a) === JSON.stringify(b);
-};
-
 // prettier-ignore
 [
 	// no match
@@ -88,7 +83,7 @@ const isEqual = (a: any, b: any): boolean => {
 			() => {
 				try {
 					const actual = new SimpleRoute(route as string).parse(input as string);
-					assertEquals(isEqual(actual, expected), true, JSON.stringify(actual));
+					assertEquals(actual, expected, JSON.stringify(actual));
 				} catch (e) {
 					if (expected instanceof RegExp) {
 						const msg = (e as Error).toString();

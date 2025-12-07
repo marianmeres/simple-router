@@ -255,17 +255,43 @@ SimpleRoute.parseQueryString("foo=bar&baz=123");
 
 ## TypeScript
 
-Full TypeScript support with exported types:
+Full TypeScript support with generic types for type-safe route callbacks and `exec()` return values.
+
+### Generic Router
+
+`SimpleRouter<T>` is generic over `T`, the return type of route callbacks:
+
+```ts
+// Typed router - all callbacks must return Component, exec() returns Component | false
+const router = new SimpleRouter<Component>({
+	"/": () => HomePage,
+	"/about": () => AboutPage,
+	"*": () => NotFoundPage,
+});
+
+const result = router.exec("/about"); // Component | false
+if (result !== false) {
+	render(result); // result is Component
+}
+
+// Without explicit type - T is inferred from callbacks (or defaults to unknown)
+const router2 = new SimpleRouter({
+	"/": () => "home",
+	"/about": () => "about",
+});
+```
+
+### Exported Types
 
 ```ts
 import type {
 	Logger,
 	RouteParams,
-	RouteCallback,
-	RouterConfig,
+	RouteCallback,     // RouteCallback<T = unknown>
+	RouterConfig,      // RouterConfig<T = unknown>
 	RouterCurrent,
 	RouterOnOptions,
-	RouterOptions,
+	RouterOptions,     // RouterOptions<T = unknown>
 	RouterSubscriber,
 	RouterUnsubscribe,
 } from "@marianmeres/simple-router";
@@ -276,21 +302,24 @@ import type {
 ### SPA with Hash Routing
 
 ```ts
-const router = new SimpleRouter({
+// Type-safe router with Component return type
+const router = new SimpleRouter<Component>({
 	"/": () => HomePage,
 	"/about": () => AboutPage,
 	"/user/[id]": (params) => UserPage(params?.id),
 	"*": () => NotFoundPage,
 });
 
-function render(component) {
-	document.getElementById("app").innerHTML = component;
+function render(component: Component) {
+	document.getElementById("app").innerHTML = component.render();
 }
 
 window.addEventListener("hashchange", () => {
 	const path = location.hash.slice(1) || "/";
-	const component = router.exec(path);
-	render(component);
+	const component = router.exec(path); // Component | false
+	if (component !== false) {
+		render(component);
+	}
 });
 
 // Trigger initial render

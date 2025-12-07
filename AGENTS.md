@@ -84,8 +84,12 @@ dev_only:
 ### SimpleRouter
 
 ```yaml
-class: SimpleRouter
+class: "SimpleRouter<T = unknown>"
 purpose: "Main router for pattern matching and state management"
+generic_param:
+  name: "T"
+  default: "unknown"
+  description: "Return type of route callbacks and exec() method"
 
 static_properties:
   - name: "debug"
@@ -96,20 +100,20 @@ static_properties:
 constructor:
   params:
     - name: "config"
-      type: "RouterConfig | RouterOptions | null"
+      type: "RouterConfig<T> | RouterOptions<T> | null"
       optional: true
       description: "Route config or options object with routes and logger"
 
 methods:
   - name: "on"
-    signature: "(routes: string | string[], cb: RouteCallback, options?: RouterOnOptions) => void"
+    signature: "(routes: string | string[], cb: RouteCallback<T>, options?: RouterOnOptions) => void"
     description: "Register route(s) with callback"
     important: "Routes matched in registration order - first match wins"
 
   - name: "exec"
-    signature: "(url: string, fallbackFn?: RouteCallback) => unknown"
+    signature: "(url: string, fallbackFn?: RouteCallback<T>) => T | false"
     description: "Execute pattern matching"
-    returns: "Callback result, or false if no match"
+    returns: "Callback result (type T), or false if no match"
 
   - name: "subscribe"
     signature: "(subscription: RouterSubscriber) => RouterUnsubscribe"
@@ -208,9 +212,11 @@ patterns:
 ```typescript
 type RouteParams = Record<string, any>;
 
-type RouteCallback = (params: RouteParams | null, route: string) => any;
+// Generic callback type - T is the return type
+type RouteCallback<T = unknown> = (params: RouteParams | null, route: string) => T;
 
-type RouterConfig = Record<string, RouteCallback>;
+// Generic config type - T is the return type of all callbacks
+type RouterConfig<T = unknown> = Record<string, RouteCallback<T>>;
 
 interface Logger {
   debug: (...args: unknown[]) => unknown;
@@ -219,8 +225,9 @@ interface Logger {
   error: (...args: unknown[]) => unknown;
 }
 
-interface RouterOptions {
-  routes?: RouterConfig | null;
+// Generic options type - T is the return type of route callbacks
+interface RouterOptions<T = unknown> {
+  routes?: RouterConfig<T> | null;
   logger?: Logger | null;
 }
 
@@ -250,10 +257,11 @@ interface RouteConfig {
 
 ## Common Usage Patterns
 
-### SPA Hash Routing
+### SPA Hash Routing (Typed)
 
 ```typescript
-const router = new SimpleRouter({
+// Type-safe router - exec() returns Component | false
+const router = new SimpleRouter<Component>({
   "/": () => HomePage,
   "/user/[id]": (params) => UserPage(params?.id),
   "*": () => NotFoundPage
@@ -261,7 +269,8 @@ const router = new SimpleRouter({
 
 window.addEventListener("hashchange", () => {
   const path = location.hash.slice(1) || "/";
-  router.exec(path);
+  const result = router.exec(path); // Component | false
+  if (result !== false) render(result);
 });
 ```
 

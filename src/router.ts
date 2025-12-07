@@ -16,19 +16,20 @@ export type RouteParams = Record<string, any>;
 /**
  * Callback function executed when a route matches.
  *
+ * @typeParam T - The return type of the callback
  * @param params - Extracted route parameters (null if no match)
  * @param route - The matched route pattern string
  * @returns Any value - useful for returning components, data, or control flow values
  *
  * @example
  * ```ts
- * const callback: RouteCallback = (params, route) => {
+ * const callback: RouteCallback<MyComponent> = (params, route) => {
  *   console.log(`Matched ${route} with params:`, params);
  *   return MyComponent;
  * };
  * ```
  */
-export type RouteCallback = (params: RouteParams | null, route: string) => any;
+export type RouteCallback<T = unknown> = (params: RouteParams | null, route: string) => T;
 
 /**
  * Represents the current router state including the matched route,
@@ -57,16 +58,18 @@ export interface RouterOnOptions {
  * Configuration object for initializing the router with routes.
  * Maps route patterns to their callback functions.
  *
+ * @typeParam T - The return type of route callbacks
+ *
  * @example
  * ```ts
- * const config: RouterConfig = {
+ * const config: RouterConfig<Component> = {
  *   "/": () => HomePage,
  *   "/user/[id]": (params) => UserPage(params?.id),
  *   "*": () => NotFoundPage
  * };
  * ```
  */
-export type RouterConfig = Record<string, RouteCallback>;
+export type RouterConfig<T = unknown> = Record<string, RouteCallback<T>>;
 
 /**
  * Logger interface compatible with `@marianmeres/clog`.
@@ -85,10 +88,12 @@ export interface Logger {
 
 /**
  * Options for the SimpleRouter factory/constructor.
+ *
+ * @typeParam T - The return type of route callbacks
  */
-export interface RouterOptions {
+export interface RouterOptions<T = unknown> {
 	/** Route configuration mapping patterns to callbacks */
-	routes?: RouterConfig | null;
+	routes?: RouterConfig<T> | null;
 	/** Optional logger instance for debug output (compatible with @marianmeres/clog) */
 	logger?: Logger | null;
 }
@@ -106,7 +111,7 @@ export type RouterUnsubscribe = () => void;
  */
 export type RouterSubscriber = (current: RouterCurrent) => void;
 
-type RouteEntry = [SimpleRoute, RouteCallback, boolean, string | null];
+type RouteEntry<T> = [SimpleRoute, RouteCallback<T>, boolean, string | null];
 
 const PUBSUB_TOPIC = "current";
 
@@ -139,8 +144,10 @@ const PUBSUB_TOPIC = "current";
  *
  * cmdRouter.exec("user:delete:123");
  * ```
+ *
+ * @typeParam T - The return type of route callbacks (default: unknown)
  */
-export class SimpleRouter {
+export class SimpleRouter<T = unknown> {
 	/**
 	 * Enable/disable console debug logging for route matching.
 	 * When enabled, logs route matching details to the console.
@@ -148,9 +155,9 @@ export class SimpleRouter {
 	 */
 	static debug: boolean = false;
 
-	#routes: RouteEntry[] = [];
+	#routes: RouteEntry<T>[] = [];
 
-	#catchAll: RouteCallback | null = null;
+	#catchAll: RouteCallback<T> | null = null;
 
 	#current: RouterCurrent = {
 		route: null,
@@ -170,14 +177,14 @@ export class SimpleRouter {
 	 *
 	 * @example
 	 * ```ts
-	 * // Simple config (backwards compatible)
-	 * const router = new SimpleRouter({
+	 * // Typed router - exec() returns Component | false
+	 * const router = new SimpleRouter<Component>({
 	 *   "/": () => HomePage,
 	 *   "/about": () => AboutPage
 	 * });
 	 *
 	 * // With options object
-	 * const router = new SimpleRouter({
+	 * const router = new SimpleRouter<Component>({
 	 *   routes: {
 	 *     "/": () => HomePage,
 	 *     "/about": () => AboutPage
@@ -186,18 +193,18 @@ export class SimpleRouter {
 	 * });
 	 * ```
 	 */
-	constructor(config: RouterConfig | RouterOptions | null = null) {
-		let routes: RouterConfig | null = null;
+	constructor(config: RouterConfig<T> | RouterOptions<T> | null = null) {
+		let routes: RouterConfig<T> | null = null;
 
 		if (config) {
 			// Check if config is RouterOptions (has 'routes' or 'logger' key)
 			if ("routes" in config || "logger" in config) {
-				const options = config as RouterOptions;
+				const options = config as RouterOptions<T>;
 				routes = options.routes ?? null;
 				this.#logger = options.logger ?? null;
 			} else {
 				// Backwards compatible: treat as RouterConfig
-				routes = config as RouterConfig;
+				routes = config as RouterConfig<T>;
 			}
 		}
 
@@ -298,7 +305,7 @@ export class SimpleRouter {
 	 */
 	on(
 		routes: string | string[],
-		cb: RouteCallback,
+		cb: RouteCallback<T>,
 		options: RouterOnOptions = {}
 	): void {
 		const { label = null, allowQueryParams = true } = options;
@@ -319,35 +326,33 @@ export class SimpleRouter {
 
 	/**
 	 * Executes pattern matching against the provided string.
-	 * Returns the value returned by the matched route's callback.
+	 * Returns the value returned by the matched route's callback (type `T`).
 	 * Routes are tested in registration order - first match wins.
 	 *
 	 * @param url - String to match against registered patterns (can be a URL, file path, command, etc.)
 	 * @param fallbackFn - Optional fallback function if no route matches
-	 * @returns The value returned by the matched callback, or false if no match
+	 * @returns `T | false` - The value returned by the matched callback, or `false` if no match
 	 *
 	 * @example
 	 * ```ts
-	 * // URL matching
-	 * router.exec("/users"); // Returns result of callback
+	 * // Type-safe routing
+	 * const router = new SimpleRouter<Component>({ "/home": () => HomePage });
+	 * const result = router.exec("/home"); // Component | false
 	 *
 	 * // With query parameters
 	 * router.exec("/users?sort=name");
 	 *
-	 * // File path matching
-	 * router.exec("src/components/Button.ts");
-	 *
-	 * // Command matching
-	 * router.exec("user:delete:123");
-	 *
 	 * // With fallback
-	 * router.exec("/unknown", () => console.log("Not found"));
+	 * router.exec("/unknown", () => NotFoundPage);
 	 *
-	 * // Can return components, values, etc.
-	 * const component = router.exec("/home");
+	 * // Check for no match
+	 * const component = router.exec("/path");
+	 * if (component !== false) {
+	 *   render(component);
+	 * }
 	 * ```
 	 */
-	exec(url: string, fallbackFn?: RouteCallback): unknown {
+	exec(url: string, fallbackFn?: RouteCallback<T>): T | false {
 		const dbgPrefix = `'${url}' -> `;
 
 		for (const [route, cb, allowQueryParams, label] of this.#routes) {
@@ -357,7 +362,7 @@ export class SimpleRouter {
 			if (params !== null) {
 				this.#publishCurrent(route.route, params, label);
 				this.#dbg(`${dbgPrefix}matches '${route.route}' with`, params);
-				return typeof cb === "function" ? cb(params, route.route) : true;
+				return cb(params, route.route);
 			}
 		}
 

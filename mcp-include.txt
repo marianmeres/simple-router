@@ -1,0 +1,1 @@
+Lightweight, framework-agnostic string pattern matcher and router with dynamic parameters, wildcards, spread parameters, query string parsing, and reactive subscriptions (Svelte store compatible).

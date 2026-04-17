@@ -35,8 +35,8 @@ const rpad = (s: string, len = 25) =>
 	//
 	['/[foo(bar)]/[baz]',         '/bar/bat',           { foo: 'bar', baz: 'bat' }],
 	['/[foo(bar)]/[baz]',         '/baz/bat',           null],
-	// url encoded segments and values
-	['/foo/[id%20x]',             '/foo/12%203',        { 'id x': '12 3' }],
+	// url encoded values (param names are NOT decoded — authors write literal names)
+	['/foo/[id%20x]',             '/foo/12%203',        { 'id%20x': '12 3' }],
 	// optional param
 	['/foo?',                     '/',                  {}],
 	['/foo?',                     '/foo',               {}],
@@ -48,11 +48,9 @@ const rpad = (s: string, len = 25) =>
 	['/foo/[bar([0-9]+)]?',       '/foo/bar',           null],
 	['/foo/[bar([0-9]+)]?',       '/foo/123',           { bar: '123' }],
 	['/foo/[bar([0-9]+)]?',       '/foo/123/baz',       null],
-	//
-	['/foo/[bar]?/baz',           '/foo',               null],
-	['/foo/[bar]?/baz',           '/foo/bar',           null], // !!! must not match
-	['/foo/[bar]?/baz',           '/foo/baz',           null], // !!! must not match
-	['/foo/[bar]?/baz',           '/foo/bar/baz',       { bar: 'bar' }],
+	// optional-followed-by-required is rejected at construction
+	// (register separate routes: '/foo/[bar]/baz' and '/foo/baz')
+	['/foo/[bar]?/baz',           '/anything',          /optional segment/i],
 	['/foo/[bar]?/[baz]?',        '/foo',               {}],
 	['/foo/[bar]?/[baz]?',        '/foo/bar',           { bar: 'bar' }],
 	['/foo/[bar]?/[baz]?',        '/foo/bar/baz',       { bar: 'bar', baz: 'baz' }],
@@ -126,4 +124,71 @@ Deno.test('spread segment must not be optional', () => {
 // prettier-ignore
 Deno.test('there can only be one spread segment', () => {
 	assertThrows(() => new SimpleRoute('/foo/[...some]/bar/[...another]'));
+});
+
+Deno.test("regex constraint may contain parentheses (capturing/non-capturing/alternation)", () => {
+	// capturing groups inside the constraint
+	let r = new SimpleRoute("/[id((\\d+)-(\\d+))]");
+	assertEquals(r.parse("/12-34"), { id: "12-34" });
+	assertEquals(r.parse("/abc"), null);
+
+	// non-capturing alternation group
+	r = new SimpleRoute("/[slug((?:foo|bar)+)]");
+	assertEquals(r.parse("/foo"), { slug: "foo" });
+	assertEquals(r.parse("/foobar"), { slug: "foobar" });
+	assertEquals(r.parse("/baz"), null);
+
+	// nested groups
+	r = new SimpleRoute("/[x([0-9]{2}(?:-[0-9]{2})?)]");
+	assertEquals(r.parse("/12"), { x: "12" });
+	assertEquals(r.parse("/12-34"), { x: "12-34" });
+	assertEquals(r.parse("/1"), null);
+});
+
+Deno.test("invalid regex inside a constraint throws a clear error", () => {
+	assertThrows(
+		() => new SimpleRoute("/[id([)]"),
+		Error,
+		"Invalid regex"
+	);
+});
+
+Deno.test("param name in a named constraint must be \\w+", () => {
+	assertThrows(
+		() => new SimpleRoute("/[my-name(\\d+)]"),
+		Error,
+		"Invalid parameter name"
+	);
+});
+
+Deno.test("optional segment followed by a required segment is rejected at construction", () => {
+	assertThrows(() => new SimpleRoute("/foo/[bar]?/baz"), Error, "optional segment");
+	assertThrows(() => new SimpleRoute("/[a]?/b"), Error, "optional segment");
+	// trailing optionals are fine
+	new SimpleRoute("/foo/[bar]?");
+	new SimpleRoute("/foo/[a]?/[b]?");
+	// optional followed by wildcard is fine (wildcard is itself optional)
+	new SimpleRoute("/[foo]?/*");
+});
+
+Deno.test("strict mode: empty segments in input do NOT collapse", () => {
+	const r = new SimpleRoute("/a/b", { strict: true });
+	assertEquals(r.parse("/a/b"), {});
+	// trailing slashes still trimmed
+	assertEquals(r.parse("/a/b/"), {});
+	// doubled internal separator is now a distinct empty segment
+	assertEquals(r.parse("/a//b"), null);
+	assertEquals(r.parse("//a/b"), {}); // leading duplicates still trimmed
+});
+
+Deno.test("non-strict (default): empty segments in input collapse (documented)", () => {
+	const r = new SimpleRoute("/a/b");
+	assertEquals(r.parse("/a//b"), {});
+	assertEquals(r.parse("/a///b"), {});
+});
+
+Deno.test("param names are NOT URI-decoded (BC: previously decoded)", () => {
+	// The value is still decoded, but the key is now the literal pattern name.
+	const r = new SimpleRoute("/foo/[id%20x]");
+	assertEquals(r.parse("/foo/12%203"), { "id%20x": "12 3" });
 });

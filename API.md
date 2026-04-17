@@ -136,6 +136,7 @@ Registers one or more route patterns with a callback function.
 |------|------|---------|-------------|
 | `label` | `string \| null` | `null` | Label for debugging/identification |
 | `allowQueryParams` | `boolean` | `true` | Whether to parse query parameters |
+| `strict` | `boolean` | _inherits from router_ | Strict segment matching (see `RouterOptions.strict`) |
 
 **Example:**
 
@@ -163,6 +164,8 @@ router.on("*", () => NotFoundPage);
 ```
 
 **Important:** Routes are matched in registration order. First match wins!
+
+**Shadowing warning:** When `SimpleRouter.debug` is enabled, registering a route that is strictly more specific than an already-registered route emits a `warn`-level log message (via the provided `Logger` if any, otherwise `console.warn`). The check is skipped when `debug` is off, so there is no runtime cost in production.
 
 ---
 
@@ -297,7 +300,7 @@ Low-level route pattern parser. Use this directly only when you need pattern mat
 ### Constructor
 
 ```ts
-new SimpleRoute(pattern: string)
+new SimpleRoute(pattern: string, options?: SimpleRouteOptions)
 ```
 
 Creates a new route pattern parser.
@@ -307,14 +310,18 @@ Creates a new route pattern parser.
 | Name | Type | Description |
 |------|------|-------------|
 | `pattern` | `string` | Route pattern to match against |
+| `options` | `SimpleRouteOptions` | Optional configuration (currently `{ strict?: boolean }`) |
 
-**Throws:** `Error` if pattern is invalid (e.g., multiple spread segments, invalid regex)
+**Throws:** `Error` if pattern is invalid — multiple spread segments, invalid regex, invalid parameter name in a named constraint, or an optional segment followed by a required one.
 
 **Example:**
 
 ```ts
 const route = new SimpleRoute("/user/[id([0-9]+)]");
 const route2 = new SimpleRoute("/files/[...path]");
+
+// Strict mode — '/a//b' will NOT match '/a/b'
+const strict = new SimpleRoute("/a/b", { strict: true });
 ```
 
 <a id="simpleroute-static-properties"></a>
@@ -462,10 +469,21 @@ Current router state object.
 interface RouterOnOptions {
   label?: string | null;      // Optional label for debugging
   allowQueryParams?: boolean; // Whether to parse query params (default: true)
+  strict?: boolean;           // Per-route strict mode (overrides router default)
 }
 ```
 
 Options for the `on()` method.
+
+### SimpleRouteOptions
+
+```ts
+interface SimpleRouteOptions {
+  strict?: boolean; // Disable empty-segment collapsing (default: false)
+}
+```
+
+Options for the `SimpleRoute` constructor.
 
 ### Logger
 
@@ -486,6 +504,7 @@ Logger interface compatible with `@marianmeres/clog`. Provides console-compatibl
 interface RouterOptions<T = unknown> {
   routes?: RouterConfig<T> | null;  // Route configuration
   logger?: Logger | null;           // Optional logger instance
+  strict?: boolean;                 // Strict mode; propagates to every route
 }
 ```
 
@@ -493,6 +512,8 @@ Options object for the constructor (alternative to plain `RouterConfig`).
 
 **Type Parameters:**
 - `T` - The return type of route callbacks (default: `unknown`)
+
+**`strict` mode:** when `true`, empty segments in both patterns and inputs (e.g. `/a//b`) are preserved rather than collapsed. This means `/a//b` will NOT match the canonical pattern `/a/b` — useful for URL canonicalization and preventing accidental shadow-matching in environments where concatenation bugs can produce doubled separators. Per-route `RouterOnOptions.strict` overrides this default.
 
 ### RouterSubscriber
 
@@ -541,11 +562,11 @@ Internal configuration for a parsed route segment. Exported for advanced use cas
 
 ### Key Behaviors
 
-1. **Separator Normalization:** Multiple separators normalized to single; trimmed from ends
-2. **First Match Wins:** Routes matched in registration order
-3. **Query String Parsing:** Enabled by default, can disable per-route
-4. **Path Params Priority:** Path params override query params with same name
-5. **URL Decoding:** Both param names and values are URL-decoded
+1. **Separator Normalization:** Multiple separators are collapsed in non-strict mode (default); trimmed from ends. Enable `strict: true` to preserve them.
+2. **First Match Wins:** Routes matched in registration order. Enable `SimpleRouter.debug` for shadowing warnings at registration time.
+3. **Query String Parsing:** Enabled by default, can disable per-route.
+4. **Path Params Priority:** Path params override query params with the same name.
+5. **URL Decoding:** Parameter _values_ are URL-decoded. Parameter _names_ are taken literally from the pattern (not decoded).
 
 ### Pattern Constraints
 
@@ -553,6 +574,12 @@ Internal configuration for a parsed route segment. Exported for advanced use cas
 - Only one spread segment allowed per route
 - Wildcard `*` must be the last segment
 - Regex in `[name(regex)]` must be valid JavaScript regex
+- In a named constraint `[name(regex)]`, `name` must match `/^\w+$/`
+- An optional segment (`[x]?`) may not be followed by a required segment — optional segments are only allowed in trailing position (or directly before a wildcard `*`)
+
+### Security (regex constraints)
+
+Regex constraints are compiled as ordinary JavaScript regexes. Some patterns (notably nested quantifiers like `(a+)+`) can exhibit catastrophic backtracking on crafted inputs. Route patterns are author-controlled — **never** accept them from untrusted input. Prefer simple character classes (`[0-9]+`, `[a-z]+`) over nested quantifiers.
 
 ### Examples
 

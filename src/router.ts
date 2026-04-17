@@ -52,6 +52,11 @@ export interface RouterOnOptions {
 	label?: string | null;
 	/** Whether to parse query parameters (default: true) */
 	allowQueryParams?: boolean;
+	/**
+	 * Strict matching mode for this route (overrides router-level default).
+	 * See `RouterOptions.strict`.
+	 */
+	strict?: boolean;
 }
 
 /**
@@ -96,6 +101,13 @@ export interface RouterOptions<T = unknown> {
 	routes?: RouterConfig<T> | null;
 	/** Optional logger instance for debug output (compatible with @marianmeres/clog) */
 	logger?: Logger | null;
+	/**
+	 * Strict matching mode. When true, empty segments in inputs (caused by
+	 * consecutive separators like `/a//b`) are NOT silently collapsed — such
+	 * inputs will not match the canonical pattern `/a/b`. Propagates to every
+	 * route registered via this router. Default: false.
+	 */
+	strict?: boolean;
 }
 
 /**
@@ -159,6 +171,8 @@ export class SimpleRouter<T = unknown> {
 
 	#catchAll: RouteCallback<T> | null = null;
 
+	#strict: boolean = false;
+
 	#current: RouterCurrent = {
 		route: null,
 		params: null,
@@ -197,11 +211,12 @@ export class SimpleRouter<T = unknown> {
 		let routes: RouterConfig<T> | null = null;
 
 		if (config) {
-			// Check if config is RouterOptions (has 'routes' or 'logger' key)
-			if ("routes" in config || "logger" in config) {
+			// Check if config is RouterOptions (has 'routes', 'logger' or 'strict' key)
+			if ("routes" in config || "logger" in config || "strict" in config) {
 				const options = config as RouterOptions<T>;
 				routes = options.routes ?? null;
 				this.#logger = options.logger ?? null;
+				this.#strict = options.strict === true;
 			} else {
 				// Backwards compatible: treat as RouterConfig
 				routes = config as RouterConfig<T>;
@@ -309,19 +324,45 @@ export class SimpleRouter<T = unknown> {
 		options: RouterOnOptions = {}
 	): void {
 		const { label = null, allowQueryParams = true } = options;
+		const strict = options.strict ?? this.#strict;
 		if (!Array.isArray(routes)) routes = [routes];
 		routes.forEach((route) => {
 			if (route === "*") {
 				this.#catchAll = cb;
 			} else {
-				this.#routes.push([
-					new SimpleRoute(route),
-					cb,
-					allowQueryParams,
-					label,
-				]);
+				const sr = new SimpleRoute(route, { strict });
+				// Dev-only shadowing warning: if an earlier route would consume the
+				// literal form of this one, the new route is unreachable. Only runs
+				// when debug logging is enabled to avoid per-registration overhead
+				// in production.
+				if (SimpleRouter.debug) this.#warnIfShadowed(route);
+				this.#routes.push([sr, cb, allowQueryParams, label]);
 			}
 		});
+	}
+
+	#warnIfShadowed(route: string): void {
+		for (const [existing] of this.#routes) {
+			if (existing.route === route) continue;
+			// If the existing pattern matches the literal text of the new route,
+			// any real input intended for the new route will also match the
+			// existing one first (first-match-wins).
+			let matched: RouteParams | null = null;
+			try {
+				matched = existing.parse(route);
+			} catch {
+				// ignore — some patterns may not be parseable as inputs
+			}
+			if (matched !== null) {
+				const msg =
+					`[SimpleRouter] route '${route}' is shadowed by earlier ` +
+					`route '${existing.route}' (first-match-wins). ` +
+					`Register the more specific route first.`;
+				if (this.#logger) this.#logger.warn(msg);
+				else console.warn(msg);
+				break;
+			}
+		}
 	}
 
 	/**

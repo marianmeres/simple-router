@@ -6,7 +6,7 @@ Machine-readable documentation for AI coding assistants.
 
 ```yaml
 name: "@marianmeres/simple-router"
-version: "2.2.3"
+version: "3.2.0"
 runtime: ["deno", "node"]
 module_system: "ESM"
 entry_point: "src/mod.ts"
@@ -38,11 +38,11 @@ key_features:
 source_files:
   - path: "src/mod.ts"
     purpose: "Main entry point, re-exports public API"
-    exports: ["SimpleRoute", "SimpleRouter", "RouteConfig", "RouteParams", "Logger", "RouteCallback", "RouterConfig", "RouterCurrent", "RouterOnOptions", "RouterOptions", "RouterSubscriber", "RouterUnsubscribe"]
+    exports: ["SimpleRoute", "SimpleRouter", "RouteConfig", "RouteParams", "SimpleRouteOptions", "Logger", "RouteCallback", "RouterConfig", "RouterCurrent", "RouterOnOptions", "RouterOptions", "RouterSubscriber", "RouterUnsubscribe"]
 
   - path: "src/route.ts"
     purpose: "Low-level pattern parser"
-    exports: ["SimpleRoute", "RouteConfig", "RouteParams"]
+    exports: ["SimpleRoute", "RouteConfig", "RouteParams", "SimpleRouteOptions"]
     class: "SimpleRoute"
 
   - path: "src/router.ts"
@@ -52,12 +52,10 @@ source_files:
 
 test_files:
   - path: "tests/route.test.ts"
-    test_count: 63
-    coverage: "Pattern matching, query params, errors"
+    coverage: "Pattern matching, query params, regex-with-parens constraints, strict mode, optional-position rules"
 
   - path: "tests/router.test.ts"
-    test_count: 24
-    coverage: "Router lifecycle, subscriptions, logger, edge cases"
+    coverage: "Router lifecycle, subscriptions, logger, strict propagation, specificity-shadowing warning"
 
 build_files:
   - path: "scripts/build-npm.ts"
@@ -102,7 +100,7 @@ constructor:
     - name: "config"
       type: "RouterConfig<T> | RouterOptions<T> | null"
       optional: true
-      description: "Route config or options object with routes and logger"
+      description: "Route config or options object with routes, logger, and strict"
 
 methods:
   - name: "on"
@@ -155,7 +153,11 @@ constructor:
     - name: "route"
       type: "string"
       description: "Pattern string"
-  throws: "Error if pattern invalid"
+    - name: "options"
+      type: "SimpleRouteOptions"
+      optional: true
+      description: "e.g. { strict: true } to disable empty-segment collapsing"
+  throws: "Error if pattern invalid (multiple spread segments, invalid regex, invalid param name, optional-followed-by-required)"
 
 static_methods:
   - name: "parseQueryString"
@@ -187,12 +189,13 @@ patterns:
     syntax: "[name(regex)]"
     example: "[id([0-9]+)]"
     captures: "{ id: '123' }"
-    constraint: "Must match regex"
+    constraint: "name must match /^\\w+$/. Regex may contain parentheses (capturing/non-capturing groups, alternation) — balanced-paren splitting is used."
 
   optional:
     syntax: "[name]?"
     example: "[id]?"
     captures: "{} or { id: 'value' }"
+    constraint: "Only allowed in trailing position (or directly before wildcard). Optional-followed-by-required throws at construction."
 
   spread:
     syntax: "[...name]"
@@ -229,6 +232,7 @@ interface Logger {
 interface RouterOptions<T = unknown> {
   routes?: RouterConfig<T> | null;
   logger?: Logger | null;
+  strict?: boolean;             // propagates to every registered route
 }
 
 interface RouterCurrent {
@@ -240,6 +244,11 @@ interface RouterCurrent {
 interface RouterOnOptions {
   label?: string | null;
   allowQueryParams?: boolean;
+  strict?: boolean;             // overrides router-level default
+}
+
+interface SimpleRouteOptions {
+  strict?: boolean;             // disables empty-segment collapsing
 }
 
 type RouterSubscriber = (current: RouterCurrent) => void;
@@ -298,11 +307,14 @@ const router = new SimpleRouter({
 behaviors:
   - name: "First Match Wins"
     description: "Routes matched in registration order"
-    implication: "Register specific routes before generic ones"
+    implication: "Register specific routes before generic ones. When SimpleRouter.debug is true, shadowing is detected at registration and warned via the logger (or console.warn)."
 
   - name: "Separator Normalization"
-    description: "Multiple separators normalized, trimmed from ends"
-    example: "//foo//bar// matches foo/bar"
+    description: "Non-strict (default): multiple separators are collapsed and trimmed from ends. Strict (opt-in): internal empty segments are preserved."
+    example: "non-strict: '//foo//bar//' matches 'foo/bar'. strict: '/a//b' does NOT match '/a/b'."
+
+  - name: "Optional Segment Position"
+    description: "Optional segments ('[x]?') may only appear trailing (or immediately before wildcard '*'). Optional-followed-by-required throws at construction — register separate routes instead."
 
   - name: "Query String Priority"
     description: "Path params override same-name query params"
@@ -312,6 +324,9 @@ behaviors:
 
   - name: "Immediate Subscription Call"
     description: "subscribe() calls callback immediately with current state"
+
+  - name: "Parameter Names Are Literal"
+    description: "Parameter names in the pattern are NOT URI-decoded. The pattern '[id%20x]' produces the key 'id%20x'. Parameter values ARE decoded."
 ```
 
 ## Error Conditions
@@ -329,6 +344,12 @@ errors:
 
   - condition: "Invalid regex in pattern"
     message: "Invalid regex in route pattern '{segment}': {error}"
+
+  - condition: "Invalid parameter name in named constraint"
+    message: "Invalid parameter name '{name}' in route pattern '{segment}' (must match /^\\w+$/)"
+
+  - condition: "Optional segment followed by a required segment"
+    message: "Invalid route '{route}': optional segment '{segment}?' must not be followed by a required segment ..."
 
   - condition: "Non-function subscriber"
     throws: "TypeError: Subscription is not a function"
@@ -352,7 +373,27 @@ guidelines:
   - "First-match-wins is core behavior - do not change"
   - "Query param parsing must remain toggleable per-route"
   - "Keep catch-all ('*') handling separate from regular routes"
-  - "URL encoding/decoding must be handled for params"
+  - "URL encoding/decoding: param VALUES are decoded; param NAMES are not"
   - "Logger interface must remain compatible with @marianmeres/clog"
-  - "Tests cover 87 cases - run before any changes"
+  - "Strict mode is opt-in and propagates router → route; per-route can override"
+  - "Shadowing warning runs only when SimpleRouter.debug is true (no perf cost otherwise)"
+  - "Run `deno task test` before any changes"
+```
+
+## Breaking Changes (3.2.0)
+
+```yaml
+breaking_changes:
+  - id: "optional-middle-rejected"
+    description: "Patterns like '/foo/[bar]?/baz' now throw at construction. Previously they parsed but silently treated the optional marker as required. Register two separate routes instead."
+
+  - id: "param-names-not-decoded"
+    description: "Parameter names are taken literally from the pattern. '/foo/[id%20x]' used to produce the key 'id x'; now produces 'id%20x'. Parameter values are still URI-decoded."
+
+  - id: "named-constraint-name-validated"
+    description: "In a named regex constraint '[name(regex)]', 'name' must match /^\\w+$/. Previously this was not validated."
+
+bug_fixes:
+  - id: "regex-constraint-with-parens"
+    description: "Constraints containing parentheses (e.g. '[s((?:a|b)+)]', '[x((\\d+)-(\\d+))]') used to produce garbage regexes or throw obscure errors due to greedy regex-based splitting. Now uses balanced-paren splitting and works correctly."
 ```

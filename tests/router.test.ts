@@ -413,3 +413,75 @@ Deno.test("subscribe returns function directly (not wrapped object)", () => {
 	// Should be a function, not an object
 	assertEquals(typeof result, "function");
 });
+
+Deno.test("RouterOptions: strict mode propagates to all routes", () => {
+	const router = new SimpleRouter({
+		strict: true,
+		routes: {
+			"/a/b": () => "matched",
+		},
+	});
+
+	assertEquals(router.exec("/a/b"), "matched");
+	// In strict mode, doubled separators in input are NOT collapsed
+	assertEquals(router.exec("/a//b"), false);
+});
+
+Deno.test("RouterOnOptions: per-route strict overrides router default", () => {
+	const router = new SimpleRouter({ strict: false });
+	router.on("/a/b", () => "strict", { strict: true });
+	router.on("/c/d", () => "loose");
+
+	assertEquals(router.exec("/a/b"), "strict");
+	assertEquals(router.exec("/a//b"), false); // strict overrides, no match
+	assertEquals(router.exec("/c//d"), "loose"); // loose still collapses
+});
+
+Deno.test("shadowing: warning is emitted only when SimpleRouter.debug is true", () => {
+	const warnings: string[] = [];
+	const logger = {
+		debug: () => {},
+		log: () => {},
+		warn: (...a: unknown[]) => warnings.push(a.join(" ")),
+		error: () => {},
+	};
+
+	// debug off: no warning
+	SimpleRouter.debug = false;
+	const quiet = new SimpleRouter({ logger, routes: {} });
+	quiet.on("/user/[id]", () => {});
+	quiet.on("/user/admin", () => {});
+	assertEquals(warnings.length, 0);
+
+	// debug on: emits warning for the shadowed route
+	SimpleRouter.debug = true;
+	try {
+		const loud = new SimpleRouter({ logger, routes: {} });
+		loud.on("/user/[id]", () => {});
+		loud.on("/user/admin", () => {});
+		assertEquals(warnings.length, 1);
+		assertEquals(warnings[0].includes("shadowed by"), true);
+	} finally {
+		SimpleRouter.debug = false;
+	}
+});
+
+Deno.test("shadowing: does NOT warn when the more specific route is registered first", () => {
+	const warnings: string[] = [];
+	const logger = {
+		debug: () => {},
+		log: () => {},
+		warn: (...a: unknown[]) => warnings.push(a.join(" ")),
+		error: () => {},
+	};
+
+	SimpleRouter.debug = true;
+	try {
+		const router = new SimpleRouter({ logger, routes: {} });
+		router.on("/user/admin", () => {});
+		router.on("/user/[id]", () => {});
+		assertEquals(warnings.length, 0);
+	} finally {
+		SimpleRouter.debug = false;
+	}
+});

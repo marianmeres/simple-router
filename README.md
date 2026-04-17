@@ -77,7 +77,35 @@ window.onhashchange = () => {
 
 ### Separators
 
-The default separator is `/`. Multiple separators are normalized to single, and separators are trimmed from both ends before matching.
+The default separator is `/`. By default (non-strict mode), multiple consecutive separators are collapsed into a single one, and separators are trimmed from both ends before matching. So `/foo//bar` and `/foo/bar/` both resolve to `/foo/bar`.
+
+If you need to treat consecutive separators as significant (for example, to canonicalize URLs and prevent accidental shadow-matching), enable **strict mode**:
+
+```ts
+// At router level (propagates to every route):
+const router = new SimpleRouter({ strict: true, routes: { "/a/b": handler } });
+router.exec("/a/b");   // matches
+router.exec("/a//b");  // false (no match)
+
+// Per-route override:
+router.on("/legacy", handler, { strict: true });
+
+// Or directly on SimpleRoute:
+new SimpleRoute("/a/b", { strict: true });
+```
+
+### Optional segments
+
+Optional segments (`[name]?`) are only allowed in **trailing position** (or directly before a trailing wildcard `*`). Optional-followed-by-required patterns are rejected at construction:
+
+```ts
+new SimpleRoute("/foo/[bar]?/baz");
+// Throws: optional segment '[bar]?' must not be followed by a required segment
+
+// Instead, register two routes:
+router.on("/foo/[bar]/baz", handler);
+router.on("/foo/baz",       handler);
+```
 
 ## Pattern Examples
 
@@ -96,7 +124,6 @@ The default separator is `/`. Multiple separators are normalized to single, and 
 | `/foo/[bar]/[id([0-9]+)]`     | `/foo/baz/123`     | `{ bar: "baz", id: "123" }`      |
 | `/foo/[bar]?`                 | `/foo`             | `{}`                             |
 | `/foo/[bar]?`                 | `/foo/bar`         | `{ bar: "bar" }`                 |
-| `/foo/[bar]?/baz`             | `/foo/bar/baz`     | `{ bar: "bar" }`                 |
 | `/[...path]/[file]`           | `/foo/bar/baz.js`  | `{ path: "foo/bar", file: "baz.js" }` |
 | `/foo/*`                      | `/foo/bar/baz.js`  | `{}`                             |
 | `/[foo]/*`                    | `/foo/bar`         | `{ foo: "foo" }`                 |
@@ -126,7 +153,7 @@ const router = new SimpleRouter({
 });
 ```
 
-- `config` - Either a `RouterConfig` object mapping route patterns to callbacks, or a `RouterOptions` object with `routes` and `logger` properties
+- `config` - Either a `RouterConfig` object mapping route patterns to callbacks, or a `RouterOptions` object with `routes`, `logger`, and `strict` properties
 
 #### Methods
 
@@ -156,8 +183,9 @@ router.on("/raw", (params) => RawPage, { allowQueryParams: false });
 **Options:**
 - `label` - Optional label for debugging (visible via `info()`)
 - `allowQueryParams` - Whether to parse query parameters (default: `true`)
+- `strict` - Per-route strict matching (overrides router default)
 
-**Important:** Routes are matched in registration order. First match wins!
+**Important:** Routes are matched in registration order. First match wins! When `SimpleRouter.debug` is enabled, a warning is logged at registration time if a new route would be shadowed by an already-registered one.
 
 ##### `exec(url, fallbackFn?)`
 
@@ -287,13 +315,14 @@ const router2 = new SimpleRouter({
 import type {
 	Logger,
 	RouteParams,
-	RouteCallback,     // RouteCallback<T = unknown>
-	RouterConfig,      // RouterConfig<T = unknown>
+	RouteCallback,      // RouteCallback<T = unknown>
+	RouterConfig,       // RouterConfig<T = unknown>
 	RouterCurrent,
 	RouterOnOptions,
-	RouterOptions,     // RouterOptions<T = unknown>
+	RouterOptions,      // RouterOptions<T = unknown>
 	RouterSubscriber,
 	RouterUnsubscribe,
+	SimpleRouteOptions, // { strict?: boolean }
 } from "@marianmeres/simple-router";
 ```
 
@@ -394,5 +423,19 @@ dotRouter.exec("app.settings.profile");
 // Returns: "Settings: profile"
 ```
 
+## Security notes
 
+Regex constraints inside a route pattern (e.g. `[id([0-9]+)]`) are compiled with `RegExp`, so any valid JavaScript regex is accepted. A handful of patterns — typically nested quantifiers such as `(a+)+` — can exhibit catastrophic backtracking (ReDoS) on crafted inputs.
+
+- Route patterns are author-controlled: **never** accept them from untrusted input.
+- Prefer simple character classes (`[0-9]+`, `[a-z]+`) over nested quantifiers.
+- If you need a complex constraint, test it against adversarial inputs first.
+
+## Breaking changes
+
+### 3.2.0
+
+- **Optional-followed-by-required is now rejected at construction.** Patterns like `/foo/[bar]?/baz` previously parsed but silently treated the optional marker as required — `/foo/baz` never matched. Such patterns now throw with a clear error. Register two separate routes instead (`/foo/[bar]/baz` and `/foo/baz`).
+- **Parameter names are no longer URI-decoded.** A pattern like `/foo/[id%20x]` used to produce the key `id x` in the params object; it now produces `id%20x`. Param values are still decoded. Parameter names in a named constraint (`[name(regex)]`) must now match `\w+`.
+- **Regex constraints with parentheses now work correctly.** Patterns like `/[id((?:a|b)+)]` previously produced garbage regexes or threw obscure "Invalid regular expression" errors; they now parse and match as expected.
 

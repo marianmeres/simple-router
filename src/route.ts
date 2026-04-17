@@ -15,6 +15,18 @@ export interface RouteConfig {
  */
 export type RouteParams = Record<string, any>;
 
+/**
+ * Options for the `SimpleRoute` constructor.
+ */
+export interface SimpleRouteOptions {
+	/**
+	 * When true, empty segments (caused by consecutive separators) are preserved
+	 * rather than silently collapsed. In strict mode, inputs like `/a//b` will
+	 * NOT match a pattern `/a/b`. Default: false.
+	 */
+	strict?: boolean;
+}
+
 export class SimpleRoute {
 	/**
 	 * Separator used to split paths into segments.
@@ -29,12 +41,15 @@ export class SimpleRoute {
 	static WILDCARD: string = "*";
 
 	#parsed: RouteConfig[];
+	#strict: boolean;
 
 	/**
 	 * Creates a new SimpleRoute instance.
 	 *
 	 * @param route - Pattern string to match against (URL, file path, command, or any string identifier)
-	 * @throws {Error} If route pattern is invalid (e.g., multiple spread segments)
+	 * @param options - Optional configuration (e.g. `{ strict: true }` to disable empty-segment collapsing)
+	 * @throws {Error} If route pattern is invalid (multiple spread segments, optional
+	 * segment followed by a required one, invalid regex constraint, etc.)
 	 *
 	 * @example
 	 * ```ts
@@ -48,10 +63,17 @@ export class SimpleRoute {
 	 *
 	 * // Command patterns
 	 * new SimpleRoute("user:delete:[id]");
+	 *
+	 * // Strict mode: '/a//b' will NOT match '/a/b'
+	 * new SimpleRoute("/a/b", { strict: true });
 	 * ```
 	 */
-	constructor(public readonly route: string) {
-		this.#parsed = SimpleRoute.#parse(route);
+	constructor(
+		public readonly route: string,
+		options: SimpleRouteOptions = {}
+	) {
+		this.#strict = options.strict === true;
+		this.#parsed = SimpleRoute.#parse(route, this.#strict);
 	}
 
 	// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
@@ -59,85 +81,128 @@ export class SimpleRoute {
 		return str.replace(/[.*+\-?^${}()|[\]\\]/g, "\\$&");
 	}
 
-	static #sanitizeAndSplit(str: string): string[] {
+	static #sanitizeAndSplit(str: string, strict: boolean): string[] {
 		const s = SimpleRoute.#escapeRegExp(SimpleRoute.SPLITTER);
-		return (
-			`${str}`
-				.trim()
-				// Trim splitters from left and right
-				.replace(new RegExp(`^(${s})+`), "")
-				.replace(new RegExp(`(${s})+$`), "")
-				.split(SimpleRoute.SPLITTER)
-				// Remove empty segments (normalizes multiple splitters into one)
-				.filter(Boolean)
-		);
+		let out = `${str}`
+			.trim()
+			// Trim splitters from left and right
+			.replace(new RegExp(`^(${s})+`), "")
+			.replace(new RegExp(`(${s})+$`), "")
+			.split(SimpleRoute.SPLITTER);
+		// In non-strict mode, empty (internal) segments are silently collapsed.
+		// In strict mode, they are preserved and treated as literal empty segments
+		// (which generally will not match any parameterized pattern position).
+		if (!strict) out = out.filter(Boolean);
+		return out;
 	}
 
-	static #parse(route: string): RouteConfig[] {
+	/**
+	 * Splits a bracketed definition like "name(regex)" into its two parts.
+	 * Uses balanced-paren tracking so nested groups in the regex are preserved.
+	 * Returns null if the input is not in the name(...)  shape.
+	 */
+	static #splitNamedConstraint(
+		inner: string
+	): { name: string; regex: string } | null {
+		const open = inner.indexOf("(");
+		if (open <= 0) return null;
+		if (!inner.endsWith(")")) return null;
+		const name = inner.slice(0, open);
+		const regex = inner.slice(open + 1, -1);
+		return { name, regex };
+	}
+
+	static #parse(route: string, strict: boolean): RouteConfig[] {
 		let wasSpread = false;
 		let wasWildcard = false;
-		return SimpleRoute.#sanitizeAndSplit(route).reduce<RouteConfig[]>(
-			(memo, segment, idx, all) => {
-				let name = null;
+		const parsed = SimpleRoute.#sanitizeAndSplit(route, strict).reduce<
+			RouteConfig[]
+		>((memo, segment, idx, all) => {
+			let name = null;
 
-				// If optional, remove trailing '?' marker
-				let isOptional = segment.endsWith("?");
-				if (isOptional) segment = segment.slice(0, -1);
+			// If optional, remove trailing '?' marker
+			let isOptional = segment.endsWith("?");
+			if (isOptional) segment = segment.slice(0, -1);
 
-				const isSpread = segment.startsWith("[...");
-				if (isSpread) {
-					if (isOptional) {
-						throw new Error("Spread segment must not be marked as optional");
-					}
-					if (wasSpread) {
-						throw new Error("Multiple spread segments are invalid");
-					}
-					wasSpread = true;
-					segment = "[" + segment.slice(4);
+			const isSpread = segment.startsWith("[...");
+			if (isSpread) {
+				if (isOptional) {
+					throw new Error("Spread segment must not be marked as optional");
 				}
+				if (wasSpread) {
+					throw new Error("Multiple spread segments are invalid");
+				}
+				wasSpread = true;
+				segment = "[" + segment.slice(4);
+			}
 
-				let test = new RegExp("^" + SimpleRoute.#escapeRegExp(segment) + "$");
+			let test = new RegExp("^" + SimpleRoute.#escapeRegExp(segment) + "$");
 
-				// Catch-all wildcard
-				if (segment === SimpleRoute.WILDCARD) {
-					if (idx < all.length - 1) {
-						throw new Error(
-							`Wildcard '${SimpleRoute.WILDCARD}' can be used only as a last segment`
-						);
-					}
-					wasWildcard = true;
-				} else {
-					// Starts with at least one word character within brackets
-					const m = segment.match(/^\[(\w.*)]$/);
-					if (m) {
-						name = m[1];
-						test = /.+/;
+			// Catch-all wildcard
+			if (segment === SimpleRoute.WILDCARD) {
+				if (idx < all.length - 1) {
+					throw new Error(
+						`Wildcard '${SimpleRoute.WILDCARD}' can be used only as a last segment`
+					);
+				}
+				wasWildcard = true;
+			} else {
+				// Starts with at least one word character within brackets
+				const m = segment.match(/^\[(\w.*)]$/);
+				if (m) {
+					name = m[1];
+					test = /.+/;
 
-						// id([0-9]+)
-						const m2 = m[1].match(/^(\w.*)\((.+)\)$/);
-						if (m2) {
-							name = m2[1];
-							try {
-								test = new RegExp("^" + m2[2] + "$");
-							} catch (e) {
-								throw new Error(
-									`Invalid regex in route pattern '${segment}': ${(e as Error).message}`
-								);
-							}
+					// Named constraint: [id([0-9]+)], [s((?:a|b)+)], ...
+					// Split on first '(' (balanced-paren-safe).
+					const split = SimpleRoute.#splitNamedConstraint(m[1]);
+					if (split) {
+						if (!/^\w+$/.test(split.name)) {
+							throw new Error(
+								`Invalid parameter name '${split.name}' in route pattern '${segment}' (must match /^\\w+$/)`
+							);
+						}
+						name = split.name;
+						try {
+							test = new RegExp("^" + split.regex + "$");
+						} catch (e) {
+							throw new Error(
+								`Invalid regex in route pattern '${segment}': ${(e as Error).message}`
+							);
 						}
 					}
 				}
+			}
 
-				if (wasWildcard) {
-					isOptional = true;
-					test = /.*/;
+			if (wasWildcard) {
+				isOptional = true;
+				test = /.*/;
+			}
+
+			memo.push({ segment, name, test, isOptional, isSpread });
+			return memo;
+		}, []);
+
+		// An optional segment may only appear in trailing position (or directly
+		// before a wildcard, which itself is optional). Otherwise the 'optional'
+		// marker is misleading — it can never actually be skipped.
+		for (let i = 0; i < parsed.length; i++) {
+			const p = parsed[i];
+			if (!p.isOptional) continue;
+			// segment is optional — all following segments must also be optional
+			for (let j = i + 1; j < parsed.length; j++) {
+				if (!parsed[j].isOptional) {
+					throw new Error(
+						`Invalid route '${route}': optional segment '${p.segment}?' must not be followed by a required segment ('${parsed[j].segment}'). ` +
+							`Optional segments are only allowed in trailing position. ` +
+							`Register separate routes instead.`
+					);
 				}
+			}
+			break;
+		}
 
-				memo.push({ segment, name, test, isOptional, isSpread });
-				return memo;
-			},
-			[]
-		);
+		return parsed;
 	}
 
 	/**
@@ -223,7 +288,7 @@ export class SimpleRoute {
 			matched = SimpleRoute.parseQueryString(_backup.slice(qPos + 1));
 		}
 
-		let segments = SimpleRoute.#sanitizeAndSplit(url);
+		let segments = SimpleRoute.#sanitizeAndSplit(url, this.#strict);
 
 		// If there are spread definitions, we need to adjust input by grouping
 		// (joining) segments that were initially split
@@ -281,7 +346,7 @@ export class SimpleRoute {
 			}
 			if (p.name) {
 				try {
-					matched[decodeURIComponent(p.name)] = decodeURIComponent(s);
+					matched[p.name] = decodeURIComponent(s);
 				} catch {
 					// Fallback for malformed URI components
 					matched[p.name] = s;

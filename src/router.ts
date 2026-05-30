@@ -289,6 +289,16 @@ export class SimpleRouter<T = unknown> {
 	}
 
 	/**
+	 * The registered catch-all (`*`) callback, or `null` if none was registered.
+	 * Does NOT execute it — lets a consumer fire the catch-all as a deliberate
+	 * final step (e.g. after `exec(url, undefined, { skipCatchAll: true })`)
+	 * without re-scanning the registered routes.
+	 */
+	get catchAll(): RouteCallback<T> | null {
+		return this.#catchAll;
+	}
+
+	/**
 	 * Registers one or more route patterns with a callback.
 	 * Routes are matched in the order they are registered (first match wins).
 	 * Use "*" as a catch-all route.
@@ -372,6 +382,11 @@ export class SimpleRouter<T = unknown> {
 	 *
 	 * @param url - String to match against registered patterns (can be a URL, file path, command, etc.)
 	 * @param fallbackFn - Optional fallback function if no route matches
+	 * @param options - Optional execution options. Set `skipCatchAll: true` to match
+	 *                   only real routes and return `false` on a miss instead of falling
+	 *                   back to the registered `*` catch-all. An explicitly passed
+	 *                   `fallbackFn` is unaffected. Useful when fanning a single lookup
+	 *                   across multiple routers and deferring the catch-all decision.
 	 * @returns `T | false` - The value returned by the matched callback, or `false` if no match
 	 *
 	 * @example
@@ -386,6 +401,9 @@ export class SimpleRouter<T = unknown> {
 	 * // With fallback
 	 * router.exec("/unknown", () => NotFoundPage);
 	 *
+	 * // Skip the internal catch-all: a miss returns false even if "*" is registered
+	 * router.exec("/unknown", undefined, { skipCatchAll: true });
+	 *
 	 * // Check for no match
 	 * const component = router.exec("/path");
 	 * if (component !== false) {
@@ -393,7 +411,11 @@ export class SimpleRouter<T = unknown> {
 	 * }
 	 * ```
 	 */
-	exec(url: string, fallbackFn?: RouteCallback<T>): T | false {
+	exec(
+		url: string,
+		fallbackFn?: RouteCallback<T>,
+		options?: { skipCatchAll?: boolean }
+	): T | false {
 		const dbgPrefix = `'${url}' -> `;
 
 		for (const [route, cb, allowQueryParams, label] of this.#routes) {
@@ -413,7 +435,7 @@ export class SimpleRouter<T = unknown> {
 			return fallbackFn(null, "");
 		}
 
-		if (typeof this.#catchAll === "function") {
+		if (!options?.skipCatchAll && typeof this.#catchAll === "function") {
 			this.#publishCurrent("*", null, null);
 			this.#dbg(`${dbgPrefix}catchall...`);
 			return this.#catchAll(null, "*");

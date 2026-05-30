@@ -112,6 +112,25 @@ console.log(router.current);
 // { route: "/user/[id]", params: { id: "123" }, label: null }
 ```
 
+#### `catchAll`
+
+```ts
+get catchAll(): RouteCallback<T> | null
+```
+
+Returns the registered catch-all (`*`) callback, or `null` if none was registered. Does **not** execute it — this lets a consumer fire the catch-all as a deliberate final step (e.g. after an `exec(url, undefined, { skipCatchAll: true })` pass across several routers) without re-scanning the registered routes.
+
+**Returns:** `RouteCallback<T> | null` - The catch-all callback, or `null`
+
+**Example:**
+
+```ts
+const fallback = router.catchAll;
+if (fallback) {
+  const result = fallback(null, "*"); // fire it manually
+}
+```
+
 ### Methods
 
 #### `on()`
@@ -172,7 +191,7 @@ router.on("*", () => NotFoundPage);
 #### `exec()`
 
 ```ts
-exec(url: string, fallbackFn?: RouteCallback<T>): T | false
+exec(url: string, fallbackFn?: RouteCallback<T>, options?: { skipCatchAll?: boolean }): T | false
 ```
 
 Executes pattern matching against the provided string.
@@ -183,14 +202,17 @@ Executes pattern matching against the provided string.
 |------|------|-------------|
 | `url` | `string` | String to match against registered patterns |
 | `fallbackFn` | `RouteCallback<T>` | Optional fallback function if no route matches |
+| `options` | `{ skipCatchAll?: boolean }` | Optional. Set `skipCatchAll: true` to match only real routes and return `false` on a miss instead of firing the registered `*` catch-all. An explicit `fallbackFn` is unaffected. |
 
 **Returns:** `T | false` - The value returned by the matched callback (type `T`), or `false` if no match and no catch-all/fallback.
 
 **Match Priority:**
 1. First registered matching route
 2. Fallback function (if provided)
-3. Catch-all `"*"` route (if registered)
+3. Catch-all `"*"` route (if registered, unless `skipCatchAll: true`)
 4. Returns `false`
+
+When `skipCatchAll` turns a would-be catch-all into a miss, `current` and subscribers receive the same `{ route: null, params: null, label: null }` "no match" state as a true miss.
 
 **Example:**
 
@@ -210,6 +232,9 @@ router.exec("/unknown", (params, route) => {
 // Return values from callbacks
 const component = router.exec("/home");
 render(component);
+
+// Skip the internal catch-all (e.g. when fanning a lookup across multiple routers)
+router.exec("/unknown", undefined, { skipCatchAll: true }); // => false, even if "*" is registered
 ```
 
 ---

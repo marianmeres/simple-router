@@ -187,7 +187,7 @@ router.on("/raw", (params) => RawPage, { allowQueryParams: false });
 
 **Important:** Routes are matched in registration order. First match wins! When `SimpleRouter.debug` is enabled, a warning is logged at registration time if a new route would be shadowed by an already-registered one.
 
-##### `exec(url, fallbackFn?)`
+##### `exec(url, fallbackFn?, options?)`
 
 Execute route matching against a URL.
 
@@ -199,9 +199,14 @@ router.exec("/unknown", () => console.log("Not found"));
 
 // With query params
 router.exec("/search?q=hello");
+
+// Skip the internal "*" catch-all: returns false on a miss even if "*" is registered
+router.exec("/unknown", undefined, { skipCatchAll: true });
 ```
 
 Returns the value returned by the matched callback, or `false` if no match.
+
+The optional `{ skipCatchAll: true }` flag matches **only real routes** and returns `false` on a miss, instead of falling back to the registered `*` catch-all. An explicitly passed `fallbackFn` is unaffected. This is useful when fanning a single lookup across multiple routers ("try real routes in A, then B, … and fire a catch-all only if none matched") — see the [`catchAll`](#catchall) getter for firing the deferred catch-all yourself.
 
 ##### `subscribe(callback)`
 
@@ -247,6 +252,15 @@ Gets the current router state (readonly).
 router.exec("/user/123");
 console.log(router.current);
 // { route: "/user/[id]", params: { id: "123" }, label: null }
+```
+
+##### `catchAll`
+
+Gets the registered catch-all (`*`) callback, or `null` if none was registered (readonly). Does **not** execute it — this lets you fire the catch-all as a deliberate final step (e.g. after a multi-router `exec(url, undefined, { skipCatchAll: true })` pass) without re-scanning routes.
+
+```ts
+const fallback = router.catchAll;
+if (fallback) fallback(null, "*");
 ```
 
 ##### `static debug`

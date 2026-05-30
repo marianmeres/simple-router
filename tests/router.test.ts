@@ -485,3 +485,33 @@ Deno.test("shadowing: does NOT warn when the more specific route is registered f
 		SimpleRouter.debug = false;
 	}
 });
+
+Deno.test("skipCatchAll suppresses internal catch-all", () => {
+	const r = new SimpleRouter();
+	r.on("/foo/[id]", () => "foo");
+	r.on("*", () => "catchall");
+
+	// default behavior unchanged
+	assertEquals(r.exec("/foo/123"), "foo");
+	assertEquals(r.exec("/nope"), "catchall");
+
+	// skipCatchAll: a miss returns false instead of firing the catch-all
+	assertEquals(r.exec("/foo/123", undefined, { skipCatchAll: true }), "foo");
+	assertEquals(r.exec("/nope", undefined, { skipCatchAll: true }), false);
+
+	// skipCatchAll publishes the same "no match" state as a true miss
+	assertEquals(r.current.route, null);
+	assertEquals(r.current.params, null);
+
+	// explicit fallback still wins over skipCatchAll
+	assertEquals(r.exec("/nope", () => "fb", { skipCatchAll: true }), "fb");
+
+	// catchAll getter exposes the callback without executing it
+	assertEquals(typeof r.catchAll, "function");
+});
+
+Deno.test("catchAll getter is null when no catch-all registered", () => {
+	const r = new SimpleRouter();
+	r.on("/foo", () => "foo");
+	assertEquals(r.catchAll, null);
+});

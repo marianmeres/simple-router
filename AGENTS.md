@@ -109,8 +109,8 @@ methods:
     important: "Routes matched in registration order - first match wins"
 
   - name: "exec"
-    signature: "(url: string, fallbackFn?: RouteCallback<T>) => T | false"
-    description: "Execute pattern matching"
+    signature: "(url: string, fallbackFn?: RouteCallback<T>, options?: { skipCatchAll?: boolean }) => T | false"
+    description: "Execute pattern matching. Pass { skipCatchAll: true } to match only real routes and return false on a miss instead of firing the registered '*' catch-all (an explicit fallbackFn is unaffected)."
     returns: "Callback result (type T), or false if no match"
 
   - name: "subscribe"
@@ -132,6 +132,11 @@ properties:
     type: "RouterCurrent"
     readonly: true
     description: "Current router state"
+
+  - name: "catchAll"
+    type: "RouteCallback<T> | null"
+    readonly: true
+    description: "The registered catch-all ('*') callback, or null. Does NOT execute it — lets a consumer fire the catch-all as a deliberate final step without re-scanning routes."
 ```
 
 ### SimpleRoute

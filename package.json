@@ -1,6 +1,6 @@
 {
   "name": "@marianmeres/simple-router",
-  "version": "3.4.1",
+  "version": "3.5.0",
   "description": "Lightweight, framework-agnostic string pattern matcher and router with dynamic parameters, wildcards, spread parameters, query string parsing, and reactive subscriptions (Svelte store compatible).",
   "license": "MIT",
   "author": "Marian Meres",

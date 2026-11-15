@@ -216,3 +216,14 @@ test("param names are NOT URI-decoded (BC: previously decoded)", () => {
 	const r = new SimpleRoute("/foo/[id%20x]");
 	assert.deepStrictEqual(r.parse("/foo/12%203"), { "id%20x": "12 3" });
 });
+
+// `route` was a constructor parameter property, which Node's type stripping refuses;
+// it is now a declared field assigned in the constructor. Pins that it stays public,
+// holds the pattern exactly as given (not the sanitized form), and is an own property.
+test("route property exposes the pattern as given", () => {
+	const pattern = "//foo/[id([0-9]+)]?/";
+	const r = new SimpleRoute(pattern, { strict: true });
+	assert.strictEqual(r.route, pattern);
+	assert.ok(Object.hasOwn(r, "route"));
+	assert.deepStrictEqual(Object.keys(r), ["route"]);
+});

@@ -28,6 +28,8 @@ export interface SimpleRouteOptions {
 }
 
 export class SimpleRoute {
+	readonly route: string;
+
 	/**
 	 * Separator used to split paths into segments.
 	 * @default "/"
@@ -68,10 +70,8 @@ export class SimpleRoute {
 	 * new SimpleRoute("/a/b", { strict: true });
 	 * ```
 	 */
-	constructor(
-		public readonly route: string,
-		options: SimpleRouteOptions = {}
-	) {
+	constructor(route: string, options: SimpleRouteOptions = {}) {
+		this.route = route;
 		this.#strict = options.strict === true;
 		this.#parsed = SimpleRoute.#parse(route, this.#strict);
 	}

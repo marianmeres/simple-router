@@ -103,6 +103,31 @@ Deno.test("query params parsing works and is enabled by default", () => {
 	assertEquals(actual, null, JSON.stringify(actual));
 });
 
+// https://github.com/marianmeres/simple-router/issues/2
+Deno.test("query param values may contain '='", () => {
+	const qs = "token=YWJjZA==&redirect=/items?page=2&filter=a=b";
+	const expected = {
+		token: "YWJjZA==",
+		redirect: "/items?page=2",
+		filter: "a=b",
+	};
+
+	let actual = SimpleRoute.parseQueryString(qs);
+	assertEquals(actual, expected, JSON.stringify(actual));
+
+	// same through the route parser (only the first "?" starts the query string)
+	actual = new SimpleRoute("/search").parse("/search?" + qs)!;
+	assertEquals(actual, expected, JSON.stringify(actual));
+
+	// value consisting only of "="
+	actual = SimpleRoute.parseQueryString("k==");
+	assertEquals(actual, { k: "=" }, JSON.stringify(actual));
+
+	// unchanged: encoded "=", bare flag, empty value, empty key (dropped)
+	actual = SimpleRoute.parseQueryString("enc=a%3Db&flag&empty=&=orphan");
+	assertEquals(actual, { enc: "a=b", flag: "", empty: "" }, JSON.stringify(actual));
+});
+
 Deno.test("path params have priority over query params", () => {
 	const actual = new SimpleRoute("/foo/[bar]").parse("/foo/bar?bar=bat");
 	assertEquals(actual, { bar: "bar" }, JSON.stringify(actual));

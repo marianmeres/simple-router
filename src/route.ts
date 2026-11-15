@@ -227,7 +227,11 @@ export class SimpleRoute {
 			.replace(/&$/, "")
 			.split("&")
 			.reduce<RouteParams>((memo, kvpair) => {
-				const [k, v = ""] = kvpair.split("=");
+				// Split at the FIRST "=" only: a value may itself contain "="
+				// (base64 padding, a nested URL, ...).
+				const eqPos = kvpair.indexOf("=");
+				const k = eqPos === -1 ? kvpair : kvpair.slice(0, eqPos);
+				const v = eqPos === -1 ? "" : kvpair.slice(eqPos + 1);
 				if (k.length) {
 					try {
 						const decodedKey = decodeURIComponent(k);

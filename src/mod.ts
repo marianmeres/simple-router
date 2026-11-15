@@ -1,10 +1,8 @@
 // Main classes
-export { SimpleRoute } from "./route.ts";
-export { SimpleRouter } from "./router.ts";
 
 // Type exports from route.ts
 export type { RouteConfig, RouteParams, SimpleRouteOptions } from "./route.ts";
-
+export { SimpleRoute } from "./route.ts";
 // Type exports from router.ts
 export type {
 	Logger,
@@ -16,3 +14,4 @@ export type {
 	RouterSubscriber,
 	RouterUnsubscribe,
 } from "./router.ts";
+export { SimpleRouter } from "./router.ts";

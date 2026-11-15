@@ -508,7 +508,10 @@ test("skipCatchAll suppresses internal catch-all", () => {
 	assert.deepStrictEqual(r.current.params, null);
 
 	// explicit fallback still wins over skipCatchAll
-	assert.deepStrictEqual(r.exec("/nope", () => "fb", { skipCatchAll: true }), "fb");
+	assert.deepStrictEqual(
+		r.exec("/nope", () => "fb", { skipCatchAll: true }),
+		"fb",
+	);
 
 	// catchAll getter exposes the callback without executing it
 	assert.deepStrictEqual(typeof r.catchAll, "function");

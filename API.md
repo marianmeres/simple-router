@@ -35,14 +35,14 @@ Creates a new router instance.
 
 **Type Parameters:**
 
-| Name | Default | Description |
-|------|---------|-------------|
-| `T` | `unknown` | The return type of route callbacks |
+| Name | Default   | Description                        |
+| ---- | --------- | ---------------------------------- |
+| `T`  | `unknown` | The return type of route callbacks |
 
 **Parameters:**
 
-| Name | Type | Description |
-|------|------|-------------|
+| Name     | Type                                          | Description                                    |
+| -------- | --------------------------------------------- | ---------------------------------------------- |
 | `config` | `RouterConfig<T> \| RouterOptions<T> \| null` | Optional route configuration or options object |
 
 **Example:**
@@ -143,19 +143,19 @@ Registers one or more route patterns with a callback function.
 
 **Parameters:**
 
-| Name | Type | Description |
-|------|------|-------------|
-| `routes` | `string \| string[]` | Single route pattern or array of patterns |
-| `cb` | `RouteCallback<T>` | Callback function executed when route matches (must return `T`) |
-| `options` | `RouterOnOptions` | Optional configuration object |
+| Name      | Type                 | Description                                                     |
+| --------- | -------------------- | --------------------------------------------------------------- |
+| `routes`  | `string \| string[]` | Single route pattern or array of patterns                       |
+| `cb`      | `RouteCallback<T>`   | Callback function executed when route matches (must return `T`) |
+| `options` | `RouterOnOptions`    | Optional configuration object                                   |
 
 **Options:**
 
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `label` | `string \| null` | `null` | Label for debugging/identification |
-| `allowQueryParams` | `boolean` | `true` | Whether to parse query parameters |
-| `strict` | `boolean` | _inherits from router_ | Strict segment matching (see `RouterOptions.strict`) |
+| Name               | Type             | Default                | Description                                          |
+| ------------------ | ---------------- | ---------------------- | ---------------------------------------------------- |
+| `label`            | `string \| null` | `null`                 | Label for debugging/identification                   |
+| `allowQueryParams` | `boolean`        | `true`                 | Whether to parse query parameters                    |
+| `strict`           | `boolean`        | _inherits from router_ | Strict segment matching (see `RouterOptions.strict`) |
 
 **Example:**
 
@@ -198,15 +198,16 @@ Executes pattern matching against the provided string.
 
 **Parameters:**
 
-| Name | Type | Description |
-|------|------|-------------|
-| `url` | `string` | String to match against registered patterns |
-| `fallbackFn` | `RouteCallback<T>` | Optional fallback function if no route matches |
-| `options` | `{ skipCatchAll?: boolean }` | Optional. Set `skipCatchAll: true` to match only real routes and return `false` on a miss instead of firing the registered `*` catch-all. An explicit `fallbackFn` is unaffected. |
+| Name         | Type                         | Description                                                                                                                                                                       |
+| ------------ | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `url`        | `string`                     | String to match against registered patterns                                                                                                                                       |
+| `fallbackFn` | `RouteCallback<T>`           | Optional fallback function if no route matches                                                                                                                                    |
+| `options`    | `{ skipCatchAll?: boolean }` | Optional. Set `skipCatchAll: true` to match only real routes and return `false` on a miss instead of firing the registered `*` catch-all. An explicit `fallbackFn` is unaffected. |
 
 **Returns:** `T | false` - The value returned by the matched callback (type `T`), or `false` if no match and no catch-all/fallback.
 
 **Match Priority:**
+
 1. First registered matching route
 2. Fallback function (if provided)
 3. Catch-all `"*"` route (if registered, unless `skipCatchAll: true`)
@@ -249,13 +250,14 @@ Subscribes to router state changes. Follows the [Svelte store contract](https://
 
 **Parameters:**
 
-| Name | Type | Description |
-|------|------|-------------|
+| Name           | Type               | Description                               |
+| -------------- | ------------------ | ----------------------------------------- |
 | `subscription` | `RouterSubscriber` | Callback function receiving state changes |
 
 **Returns:** `RouterUnsubscribe` - Unsubscribe function
 
 **Behavior:**
+
 - Subscriber is called immediately with current state
 - Subsequently called on every `exec()` call
 
@@ -322,6 +324,7 @@ console.log(router.info());
 Low-level route pattern parser. Use this directly only when you need pattern matching without the full router functionality.
 
 <a id="simpleroute-constructor"></a>
+
 ### Constructor
 
 ```ts
@@ -332,9 +335,9 @@ Creates a new route pattern parser.
 
 **Parameters:**
 
-| Name | Type | Description |
-|------|------|-------------|
-| `pattern` | `string` | Route pattern to match against |
+| Name      | Type                 | Description                                               |
+| --------- | -------------------- | --------------------------------------------------------- |
+| `pattern` | `string`             | Route pattern to match against                            |
 | `options` | `SimpleRouteOptions` | Optional configuration (currently `{ strict?: boolean }`) |
 
 **Throws:** `Error` if pattern is invalid — multiple spread segments, invalid regex, invalid parameter name in a named constraint, or an optional segment followed by a required one.
@@ -350,6 +353,7 @@ const strict = new SimpleRoute("/a/b", { strict: true });
 ```
 
 <a id="simpleroute-static-properties"></a>
+
 ### Static Properties
 
 #### `SPLITTER`
@@ -380,8 +384,8 @@ Parses a query string into an object of key-value pairs.
 
 **Parameters:**
 
-| Name | Type | Description |
-|------|------|-------------|
+| Name  | Type     | Description                        |
+| ----- | -------- | ---------------------------------- |
 | `str` | `string` | Query string (without leading "?") |
 
 **Returns:** `RouteParams` - Object with parsed query parameters
@@ -411,10 +415,10 @@ Parses a string against this route pattern.
 
 **Parameters:**
 
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `url` | `string` | - | String to test against the pattern |
-| `allowQueryParams` | `boolean` | `true` | Whether to parse query string parameters |
+| Name               | Type      | Default | Description                              |
+| ------------------ | --------- | ------- | ---------------------------------------- |
+| `url`              | `string`  | -       | String to test against the pattern       |
+| `allowQueryParams` | `boolean` | `true`  | Whether to parse query string parameters |
 
 **Returns:** `RouteParams` object with extracted parameters, or `null` if no match
 
@@ -457,9 +461,11 @@ type RouteCallback<T = unknown> = (params: RouteParams | null, route: string) =>
 Callback function executed when a route matches.
 
 **Type Parameters:**
+
 - `T` - The return type of the callback (default: `unknown`)
 
 **Parameters:**
+
 - `params` - Extracted route parameters (or `null` if no params)
 - `route` - The matched route pattern string
 
@@ -474,6 +480,7 @@ type RouterConfig<T = unknown> = Record<string, RouteCallback<T>>;
 Configuration object mapping route patterns to callbacks.
 
 **Type Parameters:**
+
 - `T` - The return type of all route callbacks (default: `unknown`)
 
 ### RouterCurrent
@@ -536,6 +543,7 @@ interface RouterOptions<T = unknown> {
 Options object for the constructor (alternative to plain `RouterConfig`).
 
 **Type Parameters:**
+
 - `T` - The return type of route callbacks (default: `unknown`)
 
 **`strict` mode:** when `true`, empty segments in both patterns and inputs (e.g. `/a//b`) are preserved rather than collapsed. This means `/a//b` will NOT match the canonical pattern `/a/b` — useful for URL canonicalization and preventing accidental shadow-matching in environments where concatenation bugs can produce doubled separators. Per-route `RouterOnOptions.strict` overrides this default.
@@ -576,14 +584,14 @@ Internal configuration for a parsed route segment. Exported for advanced use cas
 
 ### Segment Types
 
-| Pattern | Description | Example |
-|---------|-------------|---------|
-| `exact` | Literal match | `foo` matches "foo" |
-| `[name]` | Named parameter | `[id]` captures any segment |
-| `[name(regex)]` | Regex constrained | `[id([0-9]+)]` captures digits only |
-| `[name]?` | Optional segment | `[id]?` matches with or without |
-| `[...name]` | Spread parameter | `[...path]` captures multiple segments |
-| `*` | Wildcard catch-all | Matches any remaining path |
+| Pattern         | Description        | Example                                |
+| --------------- | ------------------ | -------------------------------------- |
+| `exact`         | Literal match      | `foo` matches "foo"                    |
+| `[name]`        | Named parameter    | `[id]` captures any segment            |
+| `[name(regex)]` | Regex constrained  | `[id([0-9]+)]` captures digits only    |
+| `[name]?`       | Optional segment   | `[id]?` matches with or without        |
+| `[...name]`     | Spread parameter   | `[...path]` captures multiple segments |
+| `*`             | Wildcard catch-all | Matches any remaining path             |
 
 ### Key Behaviors
 
@@ -608,15 +616,15 @@ Regex constraints are compiled as ordinary JavaScript regexes. Some patterns (no
 
 ### Examples
 
-| Pattern | Input | Result |
-|---------|-------|--------|
-| `/foo` | `/bar` | `null` |
-| `/foo` | `/foo` | `{}` |
-| `/[foo]` | `/bar` | `{ foo: "bar" }` |
-| `/[id([0-9]+)]` | `/123` | `{ id: "123" }` |
-| `/[id([0-9]+)]` | `/abc` | `null` |
-| `/foo/[bar]?` | `/foo` | `{}` |
-| `/foo/[bar]?` | `/foo/baz` | `{ bar: "baz" }` |
+| Pattern             | Input       | Result                          |
+| ------------------- | ----------- | ------------------------------- |
+| `/foo`              | `/bar`      | `null`                          |
+| `/foo`              | `/foo`      | `{}`                            |
+| `/[foo]`            | `/bar`      | `{ foo: "bar" }`                |
+| `/[id([0-9]+)]`     | `/123`      | `{ id: "123" }`                 |
+| `/[id([0-9]+)]`     | `/abc`      | `null`                          |
+| `/foo/[bar]?`       | `/foo`      | `{}`                            |
+| `/foo/[bar]?`       | `/foo/baz`  | `{ bar: "baz" }`                |
 | `/[...path]/[file]` | `/a/b/c.js` | `{ path: "a/b", file: "c.js" }` |
-| `/*` | `/any/path` | `{}` |
-| `/[foo]/*` | `/bar/baz` | `{ foo: "bar" }` |
+| `/*`                | `/any/path` | `{}`                            |
+| `/[foo]/*`          | `/bar/baz`  | `{ foo: "bar" }`                |

@@ -109,24 +109,24 @@ router.on("/foo/baz",       handler);
 
 ## Pattern Examples
 
-| Route Pattern                 | URL Input          | Params Result                    |
-| ----------------------------- | ------------------ | -------------------------------- |
-| `/foo`                        | `/bar`             | `null` (no match)                |
-| `/foo`                        | (empty)            | `null`                           |
-| `/foo/[bar]`                  | `/foo`             | `null`                           |
-| `/`                           | (empty)            | `{}`                             |
-| `foo`                         | `foo`              | `{}`                             |
-| `//foo///bar.baz/`            | `foo/bar.baz`      | `{}`                             |
-| `/[foo]`                      | `/bar`             | `{ foo: "bar" }`                 |
-| `#/[foo]/[bar]`               | `#/baz/bat`        | `{ foo: "baz", bar: "bat" }`     |
-| `/[id([0-9]+)]`               | `/123`             | `{ id: "123" }`                  |
-| `/[id([0-9]+)]`               | `/foo`             | `null` (regex fails)             |
-| `/foo/[bar]/[id([0-9]+)]`     | `/foo/baz/123`     | `{ bar: "baz", id: "123" }`      |
-| `/foo/[bar]?`                 | `/foo`             | `{}`                             |
-| `/foo/[bar]?`                 | `/foo/bar`         | `{ bar: "bar" }`                 |
-| `/[...path]/[file]`           | `/foo/bar/baz.js`  | `{ path: "foo/bar", file: "baz.js" }` |
-| `/foo/*`                      | `/foo/bar/baz.js`  | `{}`                             |
-| `/[foo]/*`                    | `/foo/bar`         | `{ foo: "foo" }`                 |
+| Route Pattern             | URL Input         | Params Result                         |
+| ------------------------- | ----------------- | ------------------------------------- |
+| `/foo`                    | `/bar`            | `null` (no match)                     |
+| `/foo`                    | (empty)           | `null`                                |
+| `/foo/[bar]`              | `/foo`            | `null`                                |
+| `/`                       | (empty)           | `{}`                                  |
+| `foo`                     | `foo`             | `{}`                                  |
+| `//foo///bar.baz/`        | `foo/bar.baz`     | `{}`                                  |
+| `/[foo]`                  | `/bar`            | `{ foo: "bar" }`                      |
+| `#/[foo]/[bar]`           | `#/baz/bat`       | `{ foo: "baz", bar: "bat" }`          |
+| `/[id([0-9]+)]`           | `/123`            | `{ id: "123" }`                       |
+| `/[id([0-9]+)]`           | `/foo`            | `null` (regex fails)                  |
+| `/foo/[bar]/[id([0-9]+)]` | `/foo/baz/123`    | `{ bar: "baz", id: "123" }`           |
+| `/foo/[bar]?`             | `/foo`            | `{}`                                  |
+| `/foo/[bar]?`             | `/foo/bar`        | `{ bar: "bar" }`                      |
+| `/[...path]/[file]`       | `/foo/bar/baz.js` | `{ path: "foo/bar", file: "baz.js" }` |
+| `/foo/*`                  | `/foo/bar/baz.js` | `{}`                                  |
+| `/[foo]/*`                | `/foo/bar`        | `{ foo: "foo" }`                      |
 
 ## API Reference
 
@@ -181,6 +181,7 @@ router.on("/raw", (params) => RawPage, { allowQueryParams: false });
 ```
 
 **Options:**
+
 - `label` - Optional label for debugging (visible via `info()`)
 - `allowQueryParams` - Whether to parse query parameters (default: `true`)
 - `strict` - Per-route strict matching (overrides router default)
@@ -452,7 +453,6 @@ Regex constraints inside a route pattern (e.g. `[id([0-9]+)]`) are compiled with
 - **Optional-followed-by-required is now rejected at construction.** Patterns like `/foo/[bar]?/baz` previously parsed but silently treated the optional marker as required — `/foo/baz` never matched. Such patterns now throw with a clear error. Register two separate routes instead (`/foo/[bar]/baz` and `/foo/baz`).
 - **Parameter names are no longer URI-decoded.** A pattern like `/foo/[id%20x]` used to produce the key `id x` in the params object; it now produces `id%20x`. Param values are still decoded. Parameter names in a named constraint (`[name(regex)]`) must now match `\w+`.
 - **Regex constraints with parentheses now work correctly.** Patterns like `/[id((?:a|b)+)]` previously produced garbage regexes or threw obscure "Invalid regular expression" errors; they now parse and match as expected.
-
 
 ## Development
 

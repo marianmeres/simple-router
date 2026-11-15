@@ -1,5 +1,5 @@
-import { SimpleRoute } from "./route.ts";
 import { createPubSub } from "@marianmeres/pubsub";
+import { SimpleRoute } from "./route.ts";
 
 /**
  * Route parameters extracted from the URL path and query string.
@@ -251,10 +251,13 @@ export class SimpleRouter<T = unknown> {
 	 * ```
 	 */
 	info(): Record<string, string> {
-		return this.#routes.reduce((m, r) => {
-			m[r[0].route] = r[3] || "";
-			return m;
-		}, {} as Record<string, string>);
+		return this.#routes.reduce(
+			(m, r) => {
+				m[r[0].route] = r[3] || "";
+				return m;
+			},
+			{} as Record<string, string>,
+		);
 	}
 
 	/**
@@ -331,7 +334,7 @@ export class SimpleRouter<T = unknown> {
 	on(
 		routes: string | string[],
 		cb: RouteCallback<T>,
-		options: RouterOnOptions = {}
+		options: RouterOnOptions = {},
 	): void {
 		const { label = null, allowQueryParams = true } = options;
 		const strict = options.strict ?? this.#strict;
@@ -414,7 +417,7 @@ export class SimpleRouter<T = unknown> {
 	exec(
 		url: string,
 		fallbackFn?: RouteCallback<T>,
-		options?: { skipCatchAll?: boolean }
+		options?: { skipCatchAll?: boolean },
 	): T | false {
 		const dbgPrefix = `'${url}' -> `;
 
@@ -449,7 +452,7 @@ export class SimpleRouter<T = unknown> {
 	#publishCurrent(
 		route: string | null,
 		params: RouteParams | null,
-		label: string | null
+		label: string | null,
 	): void {
 		this.#current = { route, params, label };
 		this.#pubsub.publish(PUBSUB_TOPIC, this.#current);

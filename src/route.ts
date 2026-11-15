@@ -101,9 +101,7 @@ export class SimpleRoute {
 	 * Uses balanced-paren tracking so nested groups in the regex are preserved.
 	 * Returns null if the input is not in the name(...)  shape.
 	 */
-	static #splitNamedConstraint(
-		inner: string
-	): { name: string; regex: string } | null {
+	static #splitNamedConstraint(inner: string): { name: string; regex: string } | null {
 		const open = inner.indexOf("(");
 		if (open <= 0) return null;
 		if (!inner.endsWith(")")) return null;
@@ -115,73 +113,74 @@ export class SimpleRoute {
 	static #parse(route: string, strict: boolean): RouteConfig[] {
 		let wasSpread = false;
 		let wasWildcard = false;
-		const parsed = SimpleRoute.#sanitizeAndSplit(route, strict).reduce<
-			RouteConfig[]
-		>((memo, segment, idx, all) => {
-			let name = null;
+		const parsed = SimpleRoute.#sanitizeAndSplit(route, strict).reduce<RouteConfig[]>(
+			(memo, segment, idx, all) => {
+				let name = null;
 
-			// If optional, remove trailing '?' marker
-			let isOptional = segment.endsWith("?");
-			if (isOptional) segment = segment.slice(0, -1);
+				// If optional, remove trailing '?' marker
+				let isOptional = segment.endsWith("?");
+				if (isOptional) segment = segment.slice(0, -1);
 
-			const isSpread = segment.startsWith("[...");
-			if (isSpread) {
-				if (isOptional) {
-					throw new Error("Spread segment must not be marked as optional");
+				const isSpread = segment.startsWith("[...");
+				if (isSpread) {
+					if (isOptional) {
+						throw new Error("Spread segment must not be marked as optional");
+					}
+					if (wasSpread) {
+						throw new Error("Multiple spread segments are invalid");
+					}
+					wasSpread = true;
+					segment = "[" + segment.slice(4);
 				}
-				if (wasSpread) {
-					throw new Error("Multiple spread segments are invalid");
-				}
-				wasSpread = true;
-				segment = "[" + segment.slice(4);
-			}
 
-			let test = new RegExp("^" + SimpleRoute.#escapeRegExp(segment) + "$");
+				let test = new RegExp("^" + SimpleRoute.#escapeRegExp(segment) + "$");
 
-			// Catch-all wildcard
-			if (segment === SimpleRoute.WILDCARD) {
-				if (idx < all.length - 1) {
-					throw new Error(
-						`Wildcard '${SimpleRoute.WILDCARD}' can be used only as a last segment`
-					);
-				}
-				wasWildcard = true;
-			} else {
-				// Starts with at least one word character within brackets
-				const m = segment.match(/^\[(\w.*)]$/);
-				if (m) {
-					name = m[1];
-					test = /.+/;
+				// Catch-all wildcard
+				if (segment === SimpleRoute.WILDCARD) {
+					if (idx < all.length - 1) {
+						throw new Error(
+							`Wildcard '${SimpleRoute.WILDCARD}' can be used only as a last segment`,
+						);
+					}
+					wasWildcard = true;
+				} else {
+					// Starts with at least one word character within brackets
+					const m = segment.match(/^\[(\w.*)]$/);
+					if (m) {
+						name = m[1];
+						test = /.+/;
 
-					// Named constraint: [id([0-9]+)], [s((?:a|b)+)], ...
-					// Split on first '(' (balanced-paren-safe).
-					const split = SimpleRoute.#splitNamedConstraint(m[1]);
-					if (split) {
-						if (!/^\w+$/.test(split.name)) {
-							throw new Error(
-								`Invalid parameter name '${split.name}' in route pattern '${segment}' (must match /^\\w+$/)`
-							);
-						}
-						name = split.name;
-						try {
-							test = new RegExp("^" + split.regex + "$");
-						} catch (e) {
-							throw new Error(
-								`Invalid regex in route pattern '${segment}': ${(e as Error).message}`
-							);
+						// Named constraint: [id([0-9]+)], [s((?:a|b)+)], ...
+						// Split on first '(' (balanced-paren-safe).
+						const split = SimpleRoute.#splitNamedConstraint(m[1]);
+						if (split) {
+							if (!/^\w+$/.test(split.name)) {
+								throw new Error(
+									`Invalid parameter name '${split.name}' in route pattern '${segment}' (must match /^\\w+$/)`,
+								);
+							}
+							name = split.name;
+							try {
+								test = new RegExp("^" + split.regex + "$");
+							} catch (e) {
+								throw new Error(
+									`Invalid regex in route pattern '${segment}': ${(e as Error).message}`,
+								);
+							}
 						}
 					}
 				}
-			}
 
-			if (wasWildcard) {
-				isOptional = true;
-				test = /.*/;
-			}
+				if (wasWildcard) {
+					isOptional = true;
+					test = /.*/;
+				}
 
-			memo.push({ segment, name, test, isOptional, isSpread });
-			return memo;
-		}, []);
+				memo.push({ segment, name, test, isOptional, isSpread });
+				return memo;
+			},
+			[],
+		);
 
 		// An optional segment may only appear in trailing position (or directly
 		// before a wildcard, which itself is optional). Otherwise the 'optional'
@@ -195,7 +194,7 @@ export class SimpleRoute {
 					throw new Error(
 						`Invalid route '${route}': optional segment '${p.segment}?' must not be followed by a required segment ('${parsed[j].segment}'). ` +
 							`Optional segments are only allowed in trailing position. ` +
-							`Register separate routes instead.`
+							`Register separate routes instead.`,
 					);
 				}
 			}
@@ -306,7 +305,7 @@ export class SimpleRoute {
 						newSegments.push(
 							segments
 								.slice(0, this.#parsed.length - i)
-								.join(SimpleRoute.SPLITTER)
+								.join(SimpleRoute.SPLITTER),
 						);
 						segments = segments.slice(this.#parsed.length - i);
 					}

@@ -1,0 +1,16 @@
+{
+	// `pnpm run build`: emits src/ to dist/ (ESM + .d.ts), which is all that gets published.
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": false,
+		"rootDir": "src",
+		"outDir": "dist",
+		"declaration": true,
+		// esnext, as npmbuild built it: the emitted JS stays byte-identical to what npm had.
+		// Below esnext, tsc 7 rewrites SimpleRouter's self-references to an alias
+		// (`var _a; … _a = SimpleRouter`) where it reads its static `debug`. A no-op,
+		// but a change to the published output.
+		"target": "esnext"
+	},
+	"include": ["src"]
+}

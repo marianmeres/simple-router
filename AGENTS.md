@@ -6,12 +6,15 @@ Machine-readable documentation for AI coding assistants.
 
 ```yaml
 name: "@marianmeres/simple-router"
-version: "3.2.0"
-runtime: ["deno", "node"]
+version: "3.4.1" # source of truth: package.json
 module_system: "ESM"
 entry_point: "src/mod.ts"
-npm_dist: ".npm-dist/"
 license: "MIT"
+stack: "TypeScript (erasable-only), Node LTS (.node-version), pnpm, node:test, Biome"
+registries:
+  npm: "dist/ built by tsc from src/ (gitignored), manifest package.json"
+  jsr: "the .ts source, manifest jsr.json (no version; publish passes --set-version)"
+runtime_support: "pure TypeScript, no runtime APIs: browser, Node and Deno alike"
 ```
 
 ## Core Concepts
@@ -50,16 +53,24 @@ source_files:
     exports: ["SimpleRouter", "RouteParams", "Logger", "RouteCallback", "RouterConfig", "RouterCurrent", "RouterOnOptions", "RouterOptions", "RouterSubscriber", "RouterUnsubscribe"]
     class: "SimpleRouter"
 
-test_files:
+test_files: # node:test + node:assert/strict; import ../src, never dist
   - path: "tests/route.test.ts"
-    coverage: "Pattern matching, query params, regex-with-parens constraints, strict mode, optional-position rules"
+    coverage: "Pattern matching, query params, regex-with-parens constraints, strict mode, optional-position rules, the public route property"
 
   - path: "tests/router.test.ts"
     coverage: "Router lifecycle, subscriptions, logger, strict propagation, specificity-shadowing warning"
 
-build_files:
-  - path: "scripts/build-npm.ts"
-    purpose: "Deno-to-npm build script"
+config_files:
+  - path: "package.json"
+    purpose: "Manifest of record: version, npm exports, dependencies, scripts"
+  - path: "jsr.json"
+    purpose: "JSR manifest: exports, jsr: import map, publish.include (no version)"
+  - path: "tsconfig.json"
+    purpose: "Type gate: src + tests, noEmit"
+  - path: "tsconfig.build.json"
+    purpose: "src -> dist (ESM + .d.ts) for npm; target esnext"
+  - path: "biome.json"
+    purpose: "Format + lint"
 ```
 
 ## Dependencies
@@ -67,14 +78,14 @@ build_files:
 ```yaml
 runtime:
   - name: "@marianmeres/pubsub"
-    version: "^2.4.1"
-    registry: "jsr"
+    version: "^3.0.0"
+    registry: "npm (package.json dependencies); JSR consumers resolve it through jsr.json's imports to jsr:@marianmeres/pubsub, so a Deno graph holds one copy"
     purpose: "Reactive subscriptions"
 
 dev_only:
-  - "@std/assert"
-  - "@std/fs"
-  - "@std/path"
+  - "typescript: typecheck and the dist/ build"
+  - "@biomejs/biome: format and lint"
+  - "@types/node: Node types for the tests"
 ```
 
 ## API Summary
@@ -364,9 +375,28 @@ errors:
 
 ```yaml
 commands:
-  test: "deno task test"
-  build_npm: "deno task npm:build"
-  publish_npm: "deno task npm:publish"
+  install: "pnpm install"
+  test: "pnpm test" # node --test; watch: pnpm run test:watch
+  test_deno: "pnpm run test:deno" # same suite on Deno, resolved as JSR consumers see it
+  typecheck: "pnpm run typecheck" # tsc --noEmit: Node strips types and never checks them
+  lint: "pnpm run lint" # format with: pnpm run format
+  ci: "pnpm run ci" # typecheck + lint + test, what CI runs
+  build: "pnpm run build" # tsc -p tsconfig.build.json -> dist/
+  jsr_dry_run: "pnpm run jsr:check"
+  release_and_publish: "pnpm run rp" # minor: pnpm run rpm; publishes to npm and JSR
+```
+
+## Tooling Conventions
+
+```yaml
+conventions:
+  - "Node runs the .ts source directly (type stripping) and never type-checks it: pnpm run typecheck is the type gate"
+  - "Erasable-only TS: no enum, namespace or constructor parameter properties; import type for types; .ts extensions in relative imports"
+  - "No Deno.* / Bun.* APIs and no jsr: / npm: specifiers in src/ or tests/"
+  - "tsconfig.build.json targets esnext (what the published builds used): below it, tsc 7 aliases SimpleRouter's static self-references (var _a ... _a = SimpleRouter)"
+  - "SimpleRoute.route is a declared field assigned first in the constructor, kept bare (no JSDoc) and first in the class so the emitted dist/route.js matches earlier releases"
+  - "noUncheckedIndexedAccess is off: the move off Deno changed no logic"
+  - "Never run a script named publish (npm lifecycle hook); publishing is publish:all / publish:jsr, via rp / rpm"
 ```
 
 ## Code Modification Guidelines
@@ -382,7 +412,7 @@ guidelines:
   - "Logger interface must remain compatible with @marianmeres/clog"
   - "Strict mode is opt-in and propagates router → route; per-route can override"
   - "Shadowing warning runs only when SimpleRouter.debug is true (no perf cost otherwise)"
-  - "Run `deno task test` before any changes"
+  - "Run `pnpm run ci` before and after any change"
 ```
 
 ## Breaking Changes (3.2.0)

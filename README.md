@@ -453,3 +453,21 @@ Regex constraints inside a route pattern (e.g. `[id([0-9]+)]`) are compiled with
 - **Parameter names are no longer URI-decoded.** A pattern like `/foo/[id%20x]` used to produce the key `id x` in the params object; it now produces `id%20x`. Param values are still decoded. Parameter names in a named constraint (`[name(regex)]`) must now match `\w+`.
 - **Regex constraints with parentheses now work correctly.** Patterns like `/[id((?:a|b)+)]` previously produced garbage regexes or threw obscure "Invalid regular expression" errors; they now parse and match as expected.
 
+
+## Development
+
+Node LTS (`.node-version`), pnpm, Biome, `node:test`. The source is erasable-only
+TypeScript that Node runs directly; `dist/` is built only for publishing to npm. JSR is
+served the `.ts` source (`jsr.json`).
+
+| Command                             | Does                                                     |
+| ----------------------------------- | -------------------------------------------------------- |
+| `pnpm install`                      | installs the dev tooling                                 |
+| `pnpm test` / `pnpm run test:watch` | `node --test` over `tests/**/*.test.ts`                  |
+| `pnpm run test:deno`                | the same suite on Deno, resolved as JSR consumers see it |
+| `pnpm run typecheck`                | `tsc --noEmit` over `src` and `tests`                    |
+| `pnpm run lint` / `pnpm run format` | `biome check .` read-only / with `--write`               |
+| `pnpm run ci`                       | typecheck + lint + test, what CI runs                    |
+| `pnpm run build`                    | `tsc -p tsconfig.build.json` → `dist/`                   |
+| `pnpm run jsr:check`                | `deno publish --dry-run` with the `package.json` version |
+| `pnpm run rp` / `pnpm run rpm`      | patch / minor release, then publish to npm and JSR       |

@@ -1,34 +1,35 @@
-import { assertEquals, assertExists } from "@std/assert";
+import assert from "node:assert/strict";
+import { test } from "node:test";
 import { SimpleRouter } from "../src/router.ts";
 
-Deno.test("sanity check", () => {
+test("sanity check", () => {
 	const log: string[] = [];
 	const router = new SimpleRouter({
 		"/": () => log.push("index"),
 	});
 
 	//
-	assertEquals(router.current.route, null);
-	assertEquals(router.current.params, null);
+	assert.deepStrictEqual(router.current.route, null);
+	assert.deepStrictEqual(router.current.params, null);
 
 	// match returns truthy (depends on the callback)
-	assertExists(router.exec("/"));
+	assert.ok(router.exec("/") != null);
 
 	//
-	assertEquals(router.current.route, "/");
-	assertExists(router.current.params);
+	assert.deepStrictEqual(router.current.route, "/");
+	assert.ok(router.current.params != null);
 
 	// returns falsey on no match (but only if no fallback or catch all provided)
-	assertEquals(router.exec("/wrong/path"), false);
+	assert.deepStrictEqual(router.exec("/wrong/path"), false);
 
 	//
-	assertEquals(router.current.route, null);
-	assertEquals(router.current.params, null);
+	assert.deepStrictEqual(router.current.route, null);
+	assert.deepStrictEqual(router.current.params, null);
 
-	assertEquals(log.join(), "index");
+	assert.deepStrictEqual(log.join(), "index");
 });
 
-Deno.test("route id callback param", () => {
+test("route id callback param", () => {
 	const log: Array<[any, string]> = [];
 	const router = new SimpleRouter({
 		"*": (params, routeId) => log.push([params, routeId]),
@@ -39,7 +40,7 @@ Deno.test("route id callback param", () => {
 	router.exec("/bar");
 	router.exec("/");
 
-	assertEquals(
+	assert.deepStrictEqual(
 		JSON.stringify(log),
 		JSON.stringify([
 			[null, "*"],
@@ -49,7 +50,7 @@ Deno.test("route id callback param", () => {
 	);
 });
 
-Deno.test("first match wins", () => {
+test("first match wins", () => {
 	const log: string[] = [];
 	const router = new SimpleRouter();
 
@@ -57,10 +58,10 @@ Deno.test("first match wins", () => {
 	router.on("/", () => log.push("foo"));
 
 	router.exec("/");
-	assertEquals(log.join(), "index");
+	assert.deepStrictEqual(log.join(), "index");
 });
 
-Deno.test("exec fallback", () => {
+test("exec fallback", () => {
 	const log: string[] = [];
 	const router = new SimpleRouter({
 		"/": () => log.push("index"),
@@ -68,10 +69,10 @@ Deno.test("exec fallback", () => {
 
 	router.exec("/foo", () => log.push("fallback"));
 
-	assertEquals(log.join(), "fallback");
+	assert.deepStrictEqual(log.join(), "fallback");
 });
 
-Deno.test("catch all fallback", () => {
+test("catch all fallback", () => {
 	const log: string[] = [];
 	const router = new SimpleRouter({
 		"/": () => log.push("index"),
@@ -79,16 +80,16 @@ Deno.test("catch all fallback", () => {
 	});
 
 	// truthy even on no match (because catch all returns truthy)
-	assertExists(router.exec("/foo"));
+	assert.ok(router.exec("/foo") != null);
 
-	assertEquals(router.current.route, "*");
+	assert.deepStrictEqual(router.current.route, "*");
 
 	router.exec("/");
 
-	assertEquals(log.join(), "404,index");
+	assert.deepStrictEqual(log.join(), "404,index");
 });
 
-Deno.test("exec returns arbitrary value", () => {
+test("exec returns arbitrary value", () => {
 	const indexComponent = { page: "index" };
 	const notFound = { page: "not-found" };
 
@@ -97,11 +98,11 @@ Deno.test("exec returns arbitrary value", () => {
 		"*": () => notFound,
 	});
 
-	assertEquals(router.exec("/"), indexComponent);
-	assertEquals(router.exec("/foo"), notFound);
+	assert.deepStrictEqual(router.exec("/"), indexComponent);
+	assert.deepStrictEqual(router.exec("/foo"), notFound);
 });
 
-Deno.test("integration", () => {
+test("integration", () => {
 	const log: string[] = [];
 	const log2: Array<string | null> = [];
 
@@ -121,25 +122,28 @@ Deno.test("integration", () => {
 	});
 
 	router.exec("hey", () => log.push("ho")); // custom fallback
-	assertEquals(router.current.route, null);
+	assert.deepStrictEqual(router.current.route, null);
 
 	router.exec("id/non-digits/baz"); // 404
-	assertEquals(router.current.route, "*");
-	assertEquals(router.current.params, null);
+	assert.deepStrictEqual(router.current.route, "*");
+	assert.deepStrictEqual(router.current.params, null);
 
 	router.exec("id/123/baz"); // id:123
-	assertEquals(router.current.route, route);
-	assertEquals(router.current.params?.bar, "id");
-	assertEquals(router.current.params?.id, "123");
+	assert.deepStrictEqual(router.current.route, route);
+	// a fresh reference: node:assert's deepStrictEqual is an `asserts` function, so the
+	// null check above narrowed `router.current.params` to null for the rest of the test
+	const current = router.current;
+	assert.deepStrictEqual(current.params?.bar, "id");
+	assert.deepStrictEqual(current.params?.id, "123");
 
 	router.exec(""); // index
-	assertEquals(router.current.route, "/");
+	assert.deepStrictEqual(router.current.route, "/");
 
-	assertEquals(log.join(), "ho,404,id:123,index");
-	assertEquals(log2.join(), [null, null, "*", route, "/"].join());
+	assert.deepStrictEqual(log.join(), "ho,404,id:123,index");
+	assert.deepStrictEqual(log2.join(), [null, null, "*", route, "/"].join());
 });
 
-Deno.test("unsubscribe works", () => {
+test("unsubscribe works", () => {
 	const log: Array<string | null> = [];
 	const router = new SimpleRouter({
 		"/": () => true,
@@ -149,41 +153,41 @@ Deno.test("unsubscribe works", () => {
 
 	router.exec("/");
 	const logged = log.join();
-	assertEquals(logged, ",/");
+	assert.deepStrictEqual(logged, ",/");
 
 	unsubscribe();
 
 	// log must not be changed
 	router.exec("/");
-	assertEquals(log.join(), logged);
+	assert.deepStrictEqual(log.join(), logged);
 });
 
-Deno.test("label test", () => {
+test("label test", () => {
 	const router = new SimpleRouter();
 
 	router.on("/foo", () => null, { label: "foo" });
 	router.on("/bar", () => null, { label: "bar" });
 
 	router.exec("/foo");
-	assertEquals(router.current.label, "foo");
+	assert.deepStrictEqual(router.current.label, "foo");
 
 	router.exec("/bar");
-	assertEquals(router.current.label, "bar");
+	assert.deepStrictEqual(router.current.label, "bar");
 });
 
-Deno.test("info test", () => {
+test("info test", () => {
 	const router = new SimpleRouter();
 
 	router.on("/foo", () => null, { label: "foo" });
 	router.on("/bar", () => null, { label: "bar" });
 
 	const info = router.info();
-	assertEquals(info["/foo"], "foo");
-	assertEquals(info["/bar"], "bar");
-	assertEquals(Object.keys(info).length, 2);
+	assert.deepStrictEqual(info["/foo"], "foo");
+	assert.deepStrictEqual(info["/bar"], "bar");
+	assert.deepStrictEqual(Object.keys(info).length, 2);
 });
 
-Deno.test("Edge case: duplicate route registration", () => {
+test("Edge case: duplicate route registration", () => {
 	const log: string[] = [];
 	const router = new SimpleRouter();
 
@@ -194,38 +198,38 @@ Deno.test("Edge case: duplicate route registration", () => {
 	router.exec("/test");
 
 	// First match wins, so "first" should be executed
-	assertEquals(log.join(), "first");
+	assert.deepStrictEqual(log.join(), "first");
 });
 
-Deno.test("Edge case: empty config constructor", () => {
+test("Edge case: empty config constructor", () => {
 	// Should not throw
 	const router1 = new SimpleRouter();
 	const router2 = new SimpleRouter(null);
 	const router3 = new SimpleRouter({});
 
-	assertEquals(router1.current.route, null);
-	assertEquals(router2.current.route, null);
-	assertEquals(router3.current.route, null);
+	assert.deepStrictEqual(router1.current.route, null);
+	assert.deepStrictEqual(router2.current.route, null);
+	assert.deepStrictEqual(router3.current.route, null);
 });
 
-Deno.test("Edge case: reset clears routes", () => {
+test("Edge case: reset clears routes", () => {
 	const log: string[] = [];
 	const router = new SimpleRouter({
 		"/test": () => log.push("test"),
 	});
 
 	router.exec("/test");
-	assertEquals(log.join(), "test");
+	assert.deepStrictEqual(log.join(), "test");
 
 	router.reset();
 	const result = router.exec("/test");
 
 	// After reset, should not match
-	assertEquals(result, false);
-	assertEquals(router.current.route, null);
+	assert.deepStrictEqual(result, false);
+	assert.deepStrictEqual(router.current.route, null);
 });
 
-Deno.test("Edge case: multiple subscribers", () => {
+test("Edge case: multiple subscribers", () => {
 	const router = new SimpleRouter();
 	const log1: Array<string | null> = [];
 	const log2: Array<string | null> = [];
@@ -241,9 +245,9 @@ Deno.test("Edge case: multiple subscribers", () => {
 	router.exec("/test");
 
 	// All subscribers should be notified
-	assertEquals(log1.join(), ",/test");
-	assertEquals(log2.join(), ",/test");
-	assertEquals(log3.join(), ",/test");
+	assert.deepStrictEqual(log1.join(), ",/test");
+	assert.deepStrictEqual(log2.join(), ",/test");
+	assert.deepStrictEqual(log3.join(), ",/test");
 
 	// Unsubscribe one
 	unsub2();
@@ -251,12 +255,12 @@ Deno.test("Edge case: multiple subscribers", () => {
 	router.exec("/test");
 
 	// sub2 should not receive updates anymore
-	assertEquals(log1.join(), ",/test,/test");
-	assertEquals(log2.join(), ",/test"); // Still the old value
-	assertEquals(log3.join(), ",/test,/test");
+	assert.deepStrictEqual(log1.join(), ",/test,/test");
+	assert.deepStrictEqual(log2.join(), ",/test"); // Still the old value
+	assert.deepStrictEqual(log3.join(), ",/test,/test");
 });
 
-Deno.test("Edge case: callback returning false/0/null/undefined", () => {
+test("Edge case: callback returning false/0/null/undefined", () => {
 	const router = new SimpleRouter();
 
 	router.on("/false", () => false);
@@ -265,13 +269,13 @@ Deno.test("Edge case: callback returning false/0/null/undefined", () => {
 	router.on("/undefined", () => undefined);
 
 	// All should return their respective values (not boolean true)
-	assertEquals(router.exec("/false"), false);
-	assertEquals(router.exec("/zero"), 0);
-	assertEquals(router.exec("/null"), null);
-	assertEquals(router.exec("/undefined"), undefined);
+	assert.deepStrictEqual(router.exec("/false"), false);
+	assert.deepStrictEqual(router.exec("/zero"), 0);
+	assert.deepStrictEqual(router.exec("/null"), null);
+	assert.deepStrictEqual(router.exec("/undefined"), undefined);
 });
 
-Deno.test("Edge case: route priority matters", () => {
+test("Edge case: route priority matters", () => {
 	const log: string[] = [];
 	const router = new SimpleRouter();
 
@@ -282,11 +286,11 @@ Deno.test("Edge case: route priority matters", () => {
 	router.exec("/user/admin");
 
 	// Generic wins because it's registered first
-	assertEquals(log.join(), "generic");
-	assertEquals(router.current.params?.id, "admin");
+	assert.deepStrictEqual(log.join(), "generic");
+	assert.deepStrictEqual(router.current.params?.id, "admin");
 });
 
-Deno.test("Edge case: subscriber called immediately on subscribe", () => {
+test("Edge case: subscriber called immediately on subscribe", () => {
 	const router = new SimpleRouter({ "/test": () => true });
 	const log: Array<string | null> = [];
 
@@ -294,17 +298,17 @@ Deno.test("Edge case: subscriber called immediately on subscribe", () => {
 	router.subscribe((v) => log.push(v.route));
 
 	// Subscriber should be called immediately with current state (null)
-	assertEquals(log.length, 1);
-	assertEquals(log[0], null);
+	assert.deepStrictEqual(log.length, 1);
+	assert.deepStrictEqual(log[0], null);
 
 	router.exec("/test");
 
 	// Now should have 2 entries
-	assertEquals(log.length, 2);
-	assertEquals(log[1], "/test");
+	assert.deepStrictEqual(log.length, 2);
+	assert.deepStrictEqual(log[1], "/test");
 });
 
-Deno.test("Edge case: query params with special characters", () => {
+test("Edge case: query params with special characters", () => {
 	const router = new SimpleRouter({
 		"/search": (params) => params,
 	});
@@ -314,11 +318,11 @@ Deno.test("Edge case: query params with special characters", () => {
 		string
 	>;
 
-	assertEquals(result?.q, "hello+world");
-	assertEquals(result?.type, "exact match");
+	assert.deepStrictEqual(result?.q, "hello+world");
+	assert.deepStrictEqual(result?.type, "exact match");
 });
 
-Deno.test("Edge case: allowQueryParams false per route", () => {
+test("Edge case: allowQueryParams false per route", () => {
 	const router = new SimpleRouter();
 
 	router.on("/with-query", (params) => params, { allowQueryParams: true });
@@ -327,11 +331,11 @@ Deno.test("Edge case: allowQueryParams false per route", () => {
 	const withQuery = router.exec("/with-query?foo=bar") as Record<string, string>;
 	const withoutQuery = router.exec("/without-query?foo=bar") as Record<string, string>;
 
-	assertEquals(withQuery?.foo, "bar");
-	assertEquals(withoutQuery?.foo, undefined);
+	assert.deepStrictEqual(withQuery?.foo, "bar");
+	assert.deepStrictEqual(withoutQuery?.foo, undefined);
 });
 
-Deno.test("RouterOptions: routes option works", () => {
+test("RouterOptions: routes option works", () => {
 	const log: string[] = [];
 	const router = new SimpleRouter({
 		routes: {
@@ -343,10 +347,10 @@ Deno.test("RouterOptions: routes option works", () => {
 	router.exec("/");
 	router.exec("/about");
 
-	assertEquals(log.join(), "index,about");
+	assert.deepStrictEqual(log.join(), "index,about");
 });
 
-Deno.test("RouterOptions: logger option works", () => {
+test("RouterOptions: logger option works", () => {
 	const logOutput: string[] = [];
 	const mockLogger = {
 		debug: (...args: unknown[]) => logOutput.push(`debug: ${args.join(" ")}`),
@@ -372,14 +376,14 @@ Deno.test("RouterOptions: logger option works", () => {
 	SimpleRouter.debug = false;
 
 	// Logger should have been called
-	assertEquals(logOutput.length, 2);
-	assertEquals(logOutput[0].includes("[SimpleRouter]"), true);
-	assertEquals(logOutput[0].includes("matches"), true);
-	assertEquals(logOutput[1].includes("[SimpleRouter]"), true);
-	assertEquals(logOutput[1].includes("no match"), true);
+	assert.deepStrictEqual(logOutput.length, 2);
+	assert.deepStrictEqual(logOutput[0].includes("[SimpleRouter]"), true);
+	assert.deepStrictEqual(logOutput[0].includes("matches"), true);
+	assert.deepStrictEqual(logOutput[1].includes("[SimpleRouter]"), true);
+	assert.deepStrictEqual(logOutput[1].includes("no match"), true);
 });
 
-Deno.test("RouterOptions: logger fallback to console.log when not provided", () => {
+test("RouterOptions: logger fallback to console.log when not provided", () => {
 	// This test verifies that the router works without a logger (uses console.log)
 	const router = new SimpleRouter({
 		routes: {
@@ -393,17 +397,17 @@ Deno.test("RouterOptions: logger fallback to console.log when not provided", () 
 	SimpleRouter.debug = false;
 });
 
-Deno.test("RouterOptions: empty options object", () => {
+test("RouterOptions: empty options object", () => {
 	const router = new SimpleRouter({
 		routes: null,
 		logger: null,
 	});
 
-	assertEquals(router.current.route, null);
-	assertEquals(router.exec("/test"), false);
+	assert.deepStrictEqual(router.current.route, null);
+	assert.deepStrictEqual(router.exec("/test"), false);
 });
 
-Deno.test("subscribe returns function directly (not wrapped object)", () => {
+test("subscribe returns function directly (not wrapped object)", () => {
 	const router = new SimpleRouter({
 		"/": () => true,
 	});
@@ -411,10 +415,10 @@ Deno.test("subscribe returns function directly (not wrapped object)", () => {
 	const result = router.subscribe(() => {});
 
 	// Should be a function, not an object
-	assertEquals(typeof result, "function");
+	assert.deepStrictEqual(typeof result, "function");
 });
 
-Deno.test("RouterOptions: strict mode propagates to all routes", () => {
+test("RouterOptions: strict mode propagates to all routes", () => {
 	const router = new SimpleRouter({
 		strict: true,
 		routes: {
@@ -422,22 +426,22 @@ Deno.test("RouterOptions: strict mode propagates to all routes", () => {
 		},
 	});
 
-	assertEquals(router.exec("/a/b"), "matched");
+	assert.deepStrictEqual(router.exec("/a/b"), "matched");
 	// In strict mode, doubled separators in input are NOT collapsed
-	assertEquals(router.exec("/a//b"), false);
+	assert.deepStrictEqual(router.exec("/a//b"), false);
 });
 
-Deno.test("RouterOnOptions: per-route strict overrides router default", () => {
+test("RouterOnOptions: per-route strict overrides router default", () => {
 	const router = new SimpleRouter({ strict: false });
 	router.on("/a/b", () => "strict", { strict: true });
 	router.on("/c/d", () => "loose");
 
-	assertEquals(router.exec("/a/b"), "strict");
-	assertEquals(router.exec("/a//b"), false); // strict overrides, no match
-	assertEquals(router.exec("/c//d"), "loose"); // loose still collapses
+	assert.deepStrictEqual(router.exec("/a/b"), "strict");
+	assert.deepStrictEqual(router.exec("/a//b"), false); // strict overrides, no match
+	assert.deepStrictEqual(router.exec("/c//d"), "loose"); // loose still collapses
 });
 
-Deno.test("shadowing: warning is emitted only when SimpleRouter.debug is true", () => {
+test("shadowing: warning is emitted only when SimpleRouter.debug is true", () => {
 	const warnings: string[] = [];
 	const logger = {
 		debug: () => {},
@@ -451,7 +455,7 @@ Deno.test("shadowing: warning is emitted only when SimpleRouter.debug is true", 
 	const quiet = new SimpleRouter({ logger, routes: {} });
 	quiet.on("/user/[id]", () => {});
 	quiet.on("/user/admin", () => {});
-	assertEquals(warnings.length, 0);
+	assert.deepStrictEqual(warnings.length, 0);
 
 	// debug on: emits warning for the shadowed route
 	SimpleRouter.debug = true;
@@ -459,14 +463,14 @@ Deno.test("shadowing: warning is emitted only when SimpleRouter.debug is true", 
 		const loud = new SimpleRouter({ logger, routes: {} });
 		loud.on("/user/[id]", () => {});
 		loud.on("/user/admin", () => {});
-		assertEquals(warnings.length, 1);
-		assertEquals(warnings[0].includes("shadowed by"), true);
+		assert.deepStrictEqual(warnings.length, 1);
+		assert.deepStrictEqual(warnings[0].includes("shadowed by"), true);
 	} finally {
 		SimpleRouter.debug = false;
 	}
 });
 
-Deno.test("shadowing: does NOT warn when the more specific route is registered first", () => {
+test("shadowing: does NOT warn when the more specific route is registered first", () => {
 	const warnings: string[] = [];
 	const logger = {
 		debug: () => {},
@@ -480,38 +484,38 @@ Deno.test("shadowing: does NOT warn when the more specific route is registered f
 		const router = new SimpleRouter({ logger, routes: {} });
 		router.on("/user/admin", () => {});
 		router.on("/user/[id]", () => {});
-		assertEquals(warnings.length, 0);
+		assert.deepStrictEqual(warnings.length, 0);
 	} finally {
 		SimpleRouter.debug = false;
 	}
 });
 
-Deno.test("skipCatchAll suppresses internal catch-all", () => {
+test("skipCatchAll suppresses internal catch-all", () => {
 	const r = new SimpleRouter();
 	r.on("/foo/[id]", () => "foo");
 	r.on("*", () => "catchall");
 
 	// default behavior unchanged
-	assertEquals(r.exec("/foo/123"), "foo");
-	assertEquals(r.exec("/nope"), "catchall");
+	assert.deepStrictEqual(r.exec("/foo/123"), "foo");
+	assert.deepStrictEqual(r.exec("/nope"), "catchall");
 
 	// skipCatchAll: a miss returns false instead of firing the catch-all
-	assertEquals(r.exec("/foo/123", undefined, { skipCatchAll: true }), "foo");
-	assertEquals(r.exec("/nope", undefined, { skipCatchAll: true }), false);
+	assert.deepStrictEqual(r.exec("/foo/123", undefined, { skipCatchAll: true }), "foo");
+	assert.deepStrictEqual(r.exec("/nope", undefined, { skipCatchAll: true }), false);
 
 	// skipCatchAll publishes the same "no match" state as a true miss
-	assertEquals(r.current.route, null);
-	assertEquals(r.current.params, null);
+	assert.deepStrictEqual(r.current.route, null);
+	assert.deepStrictEqual(r.current.params, null);
 
 	// explicit fallback still wins over skipCatchAll
-	assertEquals(r.exec("/nope", () => "fb", { skipCatchAll: true }), "fb");
+	assert.deepStrictEqual(r.exec("/nope", () => "fb", { skipCatchAll: true }), "fb");
 
 	// catchAll getter exposes the callback without executing it
-	assertEquals(typeof r.catchAll, "function");
+	assert.deepStrictEqual(typeof r.catchAll, "function");
 });
 
-Deno.test("catchAll getter is null when no catch-all registered", () => {
+test("catchAll getter is null when no catch-all registered", () => {
 	const r = new SimpleRouter();
 	r.on("/foo", () => "foo");
-	assertEquals(r.catchAll, null);
+	assert.deepStrictEqual(r.catchAll, null);
 });

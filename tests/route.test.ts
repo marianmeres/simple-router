@@ -1,5 +1,6 @@
 import { SimpleRoute } from "../src/route.ts";
-import { assertEquals, assertThrows } from "@std/assert";
+import assert from "node:assert/strict";
+import { test } from "node:test";
 
 const rpad = (s: string, len = 25) =>
 	(s += " ".repeat(Math.max(0, len - s.length)));
@@ -76,16 +77,16 @@ const rpad = (s: string, len = 25) =>
 	['/foo/[bar]/*',              '/foo/bar',           { bar: 'bar' }],
 ]
 	.forEach(([route, input, expected, _only]) => {
-		Deno.test(
+		test(
 			`${rpad(route as string, 23)} -> ${rpad(input as string, 16)} => ${expected instanceof RegExp ? expected : JSON.stringify(expected)}`,
 			() => {
 				try {
 					const actual = new SimpleRoute(route as string).parse(input as string);
-					assertEquals(actual, expected, JSON.stringify(actual));
+					assert.deepStrictEqual(actual, expected, JSON.stringify(actual));
 				} catch (e) {
 					if (expected instanceof RegExp) {
 						const msg = (e as Error).toString();
-						assertEquals(expected.test(msg), true, `${msg} does not match ${expected}`);
+						assert.deepStrictEqual(expected.test(msg), true, `${msg} does not match ${expected}`);
 					} else {
 						throw e;
 					}
@@ -94,17 +95,17 @@ const rpad = (s: string, len = 25) =>
 		)
 	});
 
-Deno.test("query params parsing works and is enabled by default", () => {
+test("query params parsing works and is enabled by default", () => {
 	let actual = new SimpleRoute("/foo/[bar]").parse("/foo/bar?baz=ba%20t");
-	assertEquals(actual, { bar: "bar", baz: "ba t" }, JSON.stringify(actual));
+	assert.deepStrictEqual(actual, { bar: "bar", baz: "ba t" }, JSON.stringify(actual));
 
 	// no match must still be no match
 	actual = new SimpleRoute("/foo/[bar]").parse("/hoho?bar=bat");
-	assertEquals(actual, null, JSON.stringify(actual));
+	assert.deepStrictEqual(actual, null, JSON.stringify(actual));
 });
 
 // https://github.com/marianmeres/simple-router/issues/2
-Deno.test("query param values may contain '='", () => {
+test("query param values may contain '='", () => {
 	const qs = "token=YWJjZA==&redirect=/items?page=2&filter=a=b";
 	const expected = {
 		token: "YWJjZA==",
@@ -113,82 +114,80 @@ Deno.test("query param values may contain '='", () => {
 	};
 
 	let actual = SimpleRoute.parseQueryString(qs);
-	assertEquals(actual, expected, JSON.stringify(actual));
+	assert.deepStrictEqual(actual, expected, JSON.stringify(actual));
 
 	// same through the route parser (only the first "?" starts the query string)
 	actual = new SimpleRoute("/search").parse("/search?" + qs)!;
-	assertEquals(actual, expected, JSON.stringify(actual));
+	assert.deepStrictEqual(actual, expected, JSON.stringify(actual));
 
 	// value consisting only of "="
 	actual = SimpleRoute.parseQueryString("k==");
-	assertEquals(actual, { k: "=" }, JSON.stringify(actual));
+	assert.deepStrictEqual(actual, { k: "=" }, JSON.stringify(actual));
 
 	// unchanged: encoded "=", bare flag, empty value, empty key (dropped)
 	actual = SimpleRoute.parseQueryString("enc=a%3Db&flag&empty=&=orphan");
-	assertEquals(actual, { enc: "a=b", flag: "", empty: "" }, JSON.stringify(actual));
+	assert.deepStrictEqual(actual, { enc: "a=b", flag: "", empty: "" }, JSON.stringify(actual));
 });
 
-Deno.test("path params have priority over query params", () => {
+test("path params have priority over query params", () => {
 	const actual = new SimpleRoute("/foo/[bar]").parse("/foo/bar?bar=bat");
-	assertEquals(actual, { bar: "bar" }, JSON.stringify(actual));
+	assert.deepStrictEqual(actual, { bar: "bar" }, JSON.stringify(actual));
 });
 
-Deno.test("query params parsing can be disabled", () => {
+test("query params parsing can be disabled", () => {
 	let actual = new SimpleRoute("/foo/[bar]").parse("/foo/bar?baz=bat", false);
-	assertEquals(actual, { bar: "bar?baz=bat" }, JSON.stringify(actual));
+	assert.deepStrictEqual(actual, { bar: "bar?baz=bat" }, JSON.stringify(actual));
 	// note added slash
 	actual = new SimpleRoute("/foo/[bar]").parse("/foo/bar/?baz=bat", false);
-	assertEquals(actual, null, JSON.stringify(actual));
+	assert.deepStrictEqual(actual, null, JSON.stringify(actual));
 });
 
 // prettier-ignore
-Deno.test('spread segment must not be optional', () => {
-	assertThrows(() => new SimpleRoute('[...path]?'));
+test('spread segment must not be optional', () => {
+	assert.throws(() => new SimpleRoute('[...path]?'));
 });
 
 // prettier-ignore
-Deno.test('there can only be one spread segment', () => {
-	assertThrows(() => new SimpleRoute('/foo/[...some]/bar/[...another]'));
+test('there can only be one spread segment', () => {
+	assert.throws(() => new SimpleRoute('/foo/[...some]/bar/[...another]'));
 });
 
-Deno.test("regex constraint may contain parentheses (capturing/non-capturing/alternation)", () => {
+test("regex constraint may contain parentheses (capturing/non-capturing/alternation)", () => {
 	// capturing groups inside the constraint
 	let r = new SimpleRoute("/[id((\\d+)-(\\d+))]");
-	assertEquals(r.parse("/12-34"), { id: "12-34" });
-	assertEquals(r.parse("/abc"), null);
+	assert.deepStrictEqual(r.parse("/12-34"), { id: "12-34" });
+	assert.deepStrictEqual(r.parse("/abc"), null);
 
 	// non-capturing alternation group
 	r = new SimpleRoute("/[slug((?:foo|bar)+)]");
-	assertEquals(r.parse("/foo"), { slug: "foo" });
-	assertEquals(r.parse("/foobar"), { slug: "foobar" });
-	assertEquals(r.parse("/baz"), null);
+	assert.deepStrictEqual(r.parse("/foo"), { slug: "foo" });
+	assert.deepStrictEqual(r.parse("/foobar"), { slug: "foobar" });
+	assert.deepStrictEqual(r.parse("/baz"), null);
 
 	// nested groups
 	r = new SimpleRoute("/[x([0-9]{2}(?:-[0-9]{2})?)]");
-	assertEquals(r.parse("/12"), { x: "12" });
-	assertEquals(r.parse("/12-34"), { x: "12-34" });
-	assertEquals(r.parse("/1"), null);
+	assert.deepStrictEqual(r.parse("/12"), { x: "12" });
+	assert.deepStrictEqual(r.parse("/12-34"), { x: "12-34" });
+	assert.deepStrictEqual(r.parse("/1"), null);
 });
 
-Deno.test("invalid regex inside a constraint throws a clear error", () => {
-	assertThrows(
+test("invalid regex inside a constraint throws a clear error", () => {
+	assert.throws(
 		() => new SimpleRoute("/[id([)]"),
-		Error,
-		"Invalid regex"
+		{ name: "Error", message: /Invalid regex/ }
 	);
 });
 
-Deno.test("param name in a named constraint must be \\w+", () => {
-	assertThrows(
+test("param name in a named constraint must be \\w+", () => {
+	assert.throws(
 		() => new SimpleRoute("/[my-name(\\d+)]"),
-		Error,
-		"Invalid parameter name"
+		{ name: "Error", message: /Invalid parameter name/ }
 	);
 });
 
-Deno.test("optional segment followed by a required segment is rejected at construction", () => {
-	assertThrows(() => new SimpleRoute("/foo/[bar]?/baz"), Error, "optional segment");
-	assertThrows(() => new SimpleRoute("/[a]?/b"), Error, "optional segment");
+test("optional segment followed by a required segment is rejected at construction", () => {
+	assert.throws(() => new SimpleRoute("/foo/[bar]?/baz"), { name: "Error", message: /optional segment/ });
+	assert.throws(() => new SimpleRoute("/[a]?/b"), { name: "Error", message: /optional segment/ });
 	// trailing optionals are fine
 	new SimpleRoute("/foo/[bar]?");
 	new SimpleRoute("/foo/[a]?/[b]?");
@@ -196,24 +195,24 @@ Deno.test("optional segment followed by a required segment is rejected at constr
 	new SimpleRoute("/[foo]?/*");
 });
 
-Deno.test("strict mode: empty segments in input do NOT collapse", () => {
+test("strict mode: empty segments in input do NOT collapse", () => {
 	const r = new SimpleRoute("/a/b", { strict: true });
-	assertEquals(r.parse("/a/b"), {});
+	assert.deepStrictEqual(r.parse("/a/b"), {});
 	// trailing slashes still trimmed
-	assertEquals(r.parse("/a/b/"), {});
+	assert.deepStrictEqual(r.parse("/a/b/"), {});
 	// doubled internal separator is now a distinct empty segment
-	assertEquals(r.parse("/a//b"), null);
-	assertEquals(r.parse("//a/b"), {}); // leading duplicates still trimmed
+	assert.deepStrictEqual(r.parse("/a//b"), null);
+	assert.deepStrictEqual(r.parse("//a/b"), {}); // leading duplicates still trimmed
 });
 
-Deno.test("non-strict (default): empty segments in input collapse (documented)", () => {
+test("non-strict (default): empty segments in input collapse (documented)", () => {
 	const r = new SimpleRoute("/a/b");
-	assertEquals(r.parse("/a//b"), {});
-	assertEquals(r.parse("/a///b"), {});
+	assert.deepStrictEqual(r.parse("/a//b"), {});
+	assert.deepStrictEqual(r.parse("/a///b"), {});
 });
 
-Deno.test("param names are NOT URI-decoded (BC: previously decoded)", () => {
+test("param names are NOT URI-decoded (BC: previously decoded)", () => {
 	// The value is still decoded, but the key is now the literal pattern name.
 	const r = new SimpleRoute("/foo/[id%20x]");
-	assertEquals(r.parse("/foo/12%203"), { "id%20x": "12 3" });
+	assert.deepStrictEqual(r.parse("/foo/12%203"), { "id%20x": "12 3" });
 });
